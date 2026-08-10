@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"sync/atomic"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -12,6 +13,8 @@ import (
 
 var (
 	isInitialied bool
+	// isDebug gates the Debug family. Set from the config's debug flag.
+	isDebug atomic.Bool
 	// Sugar represents a zap logger
 	Sugar *zap.SugaredLogger
 	// SugarFile represents a zap logger file
@@ -62,8 +65,18 @@ func Init(fileWriter io.Writer, consoleWriter io.Writer) {
 	}
 }
 
+// SetDebug turns debug logging on or off. Debug output is off until this is
+// called, so the config's debug flag actually takes effect - previously it
+// only adjusted a logger the project no longer uses.
+func SetDebug(enabled bool) {
+	isDebug.Store(enabled)
+}
+
 // Debug uses fmt.Sprint to construct and log a message.
 func Debug(args ...interface{}) {
+	if !isDebug.Load() {
+		return
+	}
 	Init(nil, nil)
 	Sugar.Debug(args)
 	if SugarFile != nil {
@@ -128,6 +141,9 @@ func Fatal(args ...interface{}) {
 
 // Debugf uses fmt.Sprintf to log a templated message.
 func Debugf(template string, args ...interface{}) {
+	if !isDebug.Load() {
+		return
+	}
 	Init(nil, nil)
 	Sugar.Debugf(template, args...)
 	if SugarFile != nil {
@@ -197,6 +213,9 @@ func Fatalf(template string, args ...interface{}) {
 //
 //	s.With(keysAndValues).Debug(msg)
 func Debugw(msg string, keysAndValues ...interface{}) {
+	if !isDebug.Load() {
+		return
+	}
 	Init(nil, nil)
 	Sugar.Debugw(msg, keysAndValues)
 	if SugarFile != nil {
@@ -267,6 +286,9 @@ func Fatalw(msg string, keysAndValues ...interface{}) {
 
 // Debugln uses fmt.Sprintln to construct and log a message.
 func Debugln(args ...interface{}) {
+	if !isDebug.Load() {
+		return
+	}
 	Init(nil, nil)
 	Sugar.Debugln(args)
 	if SugarFile != nil {

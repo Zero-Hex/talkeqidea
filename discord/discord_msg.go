@@ -123,6 +123,31 @@ func (t *Discord) handleMessage(s *discordgo.Session, m *discordgo.MessageCreate
 			continue
 		}
 
+		// Relay routes publish structured fields; the hub decides which
+		// servers see it and each one renders its own wording.
+		if route.Target == "relay" {
+			channel := route.Channel
+			if channel == "" {
+				channel = route.ChannelID
+			}
+			req := request.RelayPublish{
+				Ctx:     ctx,
+				Source:  request.RelaySourceDiscord,
+				Channel: channel,
+				Name:    ign,
+				Message: msg,
+			}
+			routes++
+			for i, s := range t.subscribers {
+				if err := s(req); err != nil {
+					tlog.Warnf("[discord->relay subscriber %d] channel %s failed: %s", i, req.Channel, err)
+					continue
+				}
+				tlog.Infof("[discord->relay] channel %s: %s: %s", req.Channel, ign, msg)
+			}
+			continue
+		}
+
 		buf := new(bytes.Buffer)
 
 		if err := route.MessagePatternTemplate().Execute(buf, struct {

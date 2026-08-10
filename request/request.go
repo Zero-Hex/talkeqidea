@@ -45,6 +45,28 @@ type TelnetSend struct {
 	Message string
 }
 
+// RelayPublish reports a locally observed message to the cross-server relay.
+//
+// It carries the sender and the channel but not the origin server: that is
+// stamped by the agent from its own identity, and re-stamped by the hub from
+// whichever token authenticated, so it cannot be spoofed along the way.
+type RelayPublish struct {
+	Ctx context.Context
+	// Source is which local endpoint observed the message, e.g. "telnet" or
+	// "discord". The hub uses it to tell its own game server's chat apart from
+	// chat typed in Discord.
+	Source  string
+	Channel string
+	Name    string
+	Message string
+}
+
+// Relay publish sources.
+const (
+	RelaySourceTelnet  = "telnet"
+	RelaySourceDiscord = "discord"
+)
+
 // PEQEditorSQL originated from PEQ Editor
 type PEQEditorSQL struct {
 	Ctx            context.Context

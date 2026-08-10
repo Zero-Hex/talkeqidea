@@ -15,6 +15,21 @@ import (
 var Version string
 
 func main() {
+	// Subcommands run before the log file is created: they are short-lived
+	// administrative commands and should not fight a running talkeq for the
+	// log, or leave a stray one behind.
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "agent":
+			tlog.Init(nil, os.Stdout)
+			if err := runAgentCommand(os.Args[2:]); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %s\n", err)
+				os.Exit(1)
+			}
+			os.Exit(0)
+		}
+	}
+
 	w, err := os.Create("talkeq.log")
 	if err != nil {
 		fmt.Println(err)

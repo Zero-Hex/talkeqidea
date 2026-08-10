@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/jbsmith7741/toml"
-	"github.com/rs/zerolog"
+	"github.com/xackery/talkeq/tlog"
 )
 
 // Config represents a configuration parse
@@ -20,6 +20,7 @@ type Config struct {
 	IsFallbackGuildChannelEnabled bool      `toml:"is_fallback_guild_channel_enabled" desc:"If a guild chat occurs and it isn't mapped inside talkeq_guilds, chat is echod to the globalguild channel route channelid"`
 	UsersDatabasePath             string    `toml:"users_database" desc:"Users by ID are mapped to their display names via the raw text file called users database\n# If users database file does not exist, a new one is created\n# This file is actively monitored. if you edit it while talkeq is running, it will reload the changes instantly\n# This file overrides the IGN: playerName role tags in discord\n# If a user is not found on this list, it will fall back to check for IGN tags"`
 	GuildsDatabasePath            string    `toml:"guilds_database" desc:"Guilds by ID are mapped to their database ID via the raw text file called guilds database\n# If guilds database file does not exist, a new one is created\n# This file is actively monitored. if you edit it while talkeq is running, it will reload the changes instantly"`
+	Relay                         Relay     `toml:"relay" desc:"Cross-server chat. Leave mode = \"standalone\" for the original single-server behavior.\n# Set mode = \"hub\" on the box that holds the Discord bot, and mode = \"agent\" on every game server that reports to it"`
 	API                           API       `toml:"api" desc:"NOT YET SUPPORTED, can be ignored for now (it's fine to keep enabled): API is a service to allow external tools to talk to TalkEQ via HTTP requests.\n# It uses Restful style (JSON) with a /api suffix for all endpoints"`
 	Discord                       Discord   `toml:"discord" desc:"Discord is a chat service that you can listen and relay EQ chat with"`
 	Telnet                        Telnet    `toml:"telnet" desc:"Telnet is a service eqemu/server can use, that relays messages over"`
@@ -101,10 +102,7 @@ func NewConfig(ctx context.Context) (*Config, error) {
 		return nil, fmt.Errorf("encode: %w", err)
 	}*/
 
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	if cfg.Debug {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	}
+	tlog.SetDebug(cfg.Debug)
 	sort.SliceStable(cfg.SQLReport.Entries, func(i, j int) bool {
 		return cfg.SQLReport.Entries[i].Index > cfg.SQLReport.Entries[j].Index
 	})
@@ -132,6 +130,9 @@ func (c *Config) Verify() error {
 		c.KeepAliveRetry = "30s"
 	}
 
+	if err := c.Relay.Verify(); err != nil {
+		return fmt.Errorf("relay: %w", err)
+	}
 	if err := c.API.Verify(); err != nil {
 		return fmt.Errorf("api: %w", err)
 	}
@@ -174,6 +175,35 @@ func getDefaultConfig() Config {
 		UsersDatabasePath:  "talkeq_users.txt",
 		GuildsDatabasePath: "talkeq_guilds.txt",
 	}
+	// Relay defaults to standalone, which is exactly how talkeq behaved before
+	// cross-server chat existed. The hub and agent sections are filled in with
+	// working examples so an operator switching mode has something to edit
+	// rather than something to invent.
+	cfg.Relay.Mode = ModeStandalone
+
+	cfg.Relay.Hub.Listen = ":9443"
+	cfg.Relay.Hub.AgentsDatabase = "talkeq_agents.json"
+	cfg.Relay.Hub.TLSMode = TLSSelfSigned
+	cfg.Relay.Hub.TLSCertPath = "talkeq_hub_cert.pem"
+	cfg.Relay.Hub.TLSKeyPath = "talkeq_hub_key.pem"
+	cfg.Relay.Hub.HeartbeatSecs = 30
+	cfg.Relay.Hub.QueueSize = 256
+	cfg.Relay.Hub.Channels = append(cfg.Relay.Hub.Channels, HubChannel{
+		Name:             "ooc",
+		IsEnabled:        true,
+		IsCrossServer:    true,
+		DiscordChannelID: "INSERTOOCCHANNELHERE",
+		DiscordPattern:   "**[{{.OriginName}}]** {{.Name}} **OOC**: {{.Message}}",
+	})
+
+	cfg.Relay.Agent.ServerKey = "server1"
+	cfg.Relay.Agent.ShortName = "Server One"
+	cfg.Relay.Agent.Channels = append(cfg.Relay.Agent.Channels, AgentChannel{
+		Name:           "ooc",
+		IsEnabled:      true,
+		InboundPattern: "emote world 260 {{.Name}} says from {{.OriginName}}, '{{.Message}}'",
+	})
+
 	cfg.API.IsEnabled = true
 	cfg.API.Host = ":9933"
 	cfg.API.APIRegister.IsEnabled = true

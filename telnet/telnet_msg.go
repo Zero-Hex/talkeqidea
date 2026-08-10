@@ -126,6 +126,27 @@ func (t *Telnet) parseMessage(msg string) bool {
 			}
 		}
 
+		// The relay carries structured fields, not rendered text: the hub and
+		// each destination server format it themselves. Handled before the
+		// profile-URL decoration below, which is Discord markdown and has no
+		// business going in-game on another server.
+		if route.Target == "relay" {
+			req := request.RelayPublish{
+				Ctx:     context.Background(),
+				Source:  request.RelaySourceTelnet,
+				Channel: route.RelayChannel(),
+				Name:    name,
+				Message: message,
+			}
+			for i, s := range t.subscribers {
+				if err = s(req); err != nil {
+					tlog.Warnf("[telnet->relay subscriber %d] channel %s failed: %s", i, req.Channel, err)
+					continue
+				}
+			}
+			continue
+		}
+
 		buf := new(bytes.Buffer)
 		if t.config.ProfileURL != "" {
 			name = fmt.Sprintf("[%s](<%s%s>)", name, t.config.ProfileURL, name)

@@ -30,6 +30,175 @@ TalkEQ bridges links between everquest and other services. Extends [DiscordEQ](h
 * Start talkeq up. The first run, it will say `a new talkeq.conf file was created. Please open this file and configure talkeq, then run it again.`.
 * Edit the talkeq.conf, walking through each section and applying it for your situation. There are comments that help you through the process.
 
+## Cross-Server Chat (Relay)
+
+TalkEQ can link several EQEMU servers so that chat on one is visible on the
+others, with Discord mirroring all of it. When Soandso says something in OOC on
+server 1:
+
+```
+Discord     Soandso **OOC** [Vanilla]: Hey does anyone know where Master Claude spawns?
+Server 2    Soandso says from Vanilla, 'Hey does anyone know where Master Claude spawns?'
+Server 3    Soandso says from Vanilla, 'Hey does anyone know where Master Claude spawns?'
+```
+
+Messages typed in Discord travel the same path in reverse, reaching every
+connected server.
+
+### How it fits together
+
+One instance runs as the **hub** and every other server runs as an **agent**.
+The hub holds the Discord bot, the routing rules, and the list of authorized
+agents. An agent holds only its own token, so a compromised game server cannot
+read the Discord credentials or impersonate another server.
+
+```
+   server 1 (agent) ──┐
+   server 2 (agent) ──┼── hub ── Discord
+   server 3 (agent) ──┘
+```
+
+The hub can also be a game server itself. Set `local_server_key` in
+`[relay.hub]` and its own chat joins the relay alongside the agents.
+
+`relay.mode` defaults to `standalone`, which is exactly how TalkEQ behaved
+before cross-server chat existed. An existing `talkeq.conf` keeps working with
+no changes.
+
+### Setting up the hub
+
+On the box that runs your Discord bot, edit `talkeq.conf`:
+
+```toml
+[relay]
+  mode = "hub"
+
+  [relay.hub]
+    listen = ":9443"
+    # Where agents on other boxes should dial this hub.
+    advertise_address = "your-hub-host.example.com:9443"
+
+    [[relay.hub.channels]]
+      name = "ooc"
+      enabled = true
+      cross_server = true
+      discord_channel_id = "123456789012345678"
+      discord_pattern = "**[{{.OriginName}}]** {{.Name}} **OOC**: {{.Message}}"
+```
+
+Then authorize each server that will connect:
+
+```
+./talkeq agent add server2 "Classic"
+```
+
+That prints a **join code** — a single blob containing the hub address, the
+agent's token, and the hub's TLS certificate fingerprint. It is shown once and
+cannot be recovered; use `talkeq agent rotate` to issue a new one.
+
+```
+./talkeq agent list                # show authorized servers
+./talkeq agent rotate server2      # new token, invalidates the old one
+./talkeq agent disable server2     # temporarily block
+./talkeq agent remove server2      # revoke
+```
+
+### Setting up an agent
+
+On each game server, paste the join code:
+
+```toml
+[relay]
+  mode = "agent"
+
+  [relay.agent]
+    join_code = "talkeq1_..."
+    short_name = "Classic"
+
+    [[relay.agent.channels]]
+      name = "ooc"
+      enabled = true
+      inbound_pattern = "emote world 260 {{.Name}} says from {{.OriginName}}, '{{.Message}}'"
+```
+
+Then point a telnet route at the relay so local chat is reported upward:
+
+```toml
+[[telnet.routes]]
+  enabled = true
+  target = "relay"
+  channel = "ooc"
+  [telnet.routes.trigger]
+    telnet_pattern = "(\\w+) says ooc, '(.*)'"
+    name_index = 1
+    message_index = 2
+```
+
+To let Discord users talk into the relay, add a Discord route with the same
+target on the hub:
+
+```toml
+[[discord.routes]]
+  enabled = true
+  target = "relay"
+  channel = "ooc"
+  [discord.routes.discord_trigger]
+    channel_id = "123456789012345678"
+```
+
+### Message patterns
+
+Relay patterns render with these variables:
+
+Variable|Meaning
+---|---
+`{{.Name}}`|Who sent the message
+`{{.Message}}`|The message body
+`{{.OriginName}}`|Display name of the server it came from, e.g. `Vanilla`
+`{{.Origin}}`|Routing key of that server, e.g. `server1`
+`{{.Channel}}`|Logical channel, e.g. `ooc`
+
+Each destination renders its own wording, so Discord formatting and in-game
+wording stay independent.
+
+### Security
+
+* **Per-agent tokens.** Each server gets its own, so one can be revoked without
+  re-keying the others. The hub stores argon2id hashes only — a leaked
+  `talkeq_agents.json` does not grant access.
+* **Identity follows the token.** The hub stamps the originating server from
+  whichever token authenticated, ignoring whatever name the agent claims. An
+  agent cannot post as another server.
+* **TLS by default.** `tls_mode = "self-signed"` generates a certificate on
+  first run and agents pin its fingerprint via the join code. If your hub has a
+  public DNS name and a real certificate, use `tls_mode = "file"` and leave the
+  fingerprint empty. `tls_mode = "none"` sends tokens in the clear and is only
+  appropriate when the hub is reachable solely over a private network such as
+  WireGuard.
+* **Command injection.** Relayed names and messages are stripped of line breaks
+  and control characters before they can reach a telnet console, and every
+  outgoing line is re-checked immediately before it is written.
+
+### Loop prevention
+
+A relayed message injected into a game server echoes back on that server's own
+telnet feed, where it would otherwise look like fresh chat. Three guards stop
+this:
+
+1. The hub never sends an event back to the server it came from.
+2. Each agent remembers what it just injected and suppresses the echo.
+3. Every relay increments a hop counter; the hub rejects anything already
+   relayed, as well as any event ID it has recently seen.
+
+### Scale
+
+The hub encodes each message once and fans it out through a bounded per-agent
+queue. A slow or wedged server sheds its own backlog without blocking the hub
+or any other server, so adding the tenth server costs the same as the second.
+
+Agents reconnect on their own with exponential backoff, and report player
+counts upward so the Discord bot status shows a total across every server.
+
 ### Configure discord users to talk from Discord to EQ
 
 #### Using Discord Roles
