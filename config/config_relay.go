@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"text/template"
+	"time"
 
 	"github.com/xackery/talkeq/relay"
 	"github.com/xackery/talkeq/sanitize"
@@ -56,7 +57,28 @@ type HubConfig struct {
 	LocalShortName string       `toml:"local_short_name" desc:"Display name for the hub's own game server, e.g. Vanilla"`
 	HeartbeatSecs  int          `toml:"heartbeat_seconds" desc:"How often agents report health. Default 30"`
 	QueueSize      int          `toml:"queue_size" desc:"Messages buffered per agent before the slowest agent starts dropping. Default 256"`
+	Limits         HubLimits    `toml:"limits" desc:"Abuse controls. The hub is the only internet-facing part of a relay"`
 	Channels       []HubChannel `toml:"channels" desc:"Which chat channels are relayed, and where they go"`
+}
+
+// HubLimits are the hub's abuse controls.
+type HubLimits struct {
+	MaxAgents             int      `toml:"max_agents" desc:"Most agents that may be connected at once. 0 for no limit. Default 64"`
+	ConnectionsPerMinute  int      `toml:"connections_per_minute" desc:"Connection attempts allowed from one address per minute. 0 disables. Default 30"`
+	AuthFailuresBeforeBan int      `toml:"auth_failures_before_ban" desc:"Rejected tokens from one address before it is temporarily blocked. 0 disables. Default 5\n# Repeat offenders are blocked for twice as long each time, up to a day"`
+	BanDuration           string   `toml:"ban_duration" desc:"How long the first block lasts. Default 15m"`
+	MessagesPerSecond     float64  `toml:"messages_per_second" desc:"Sustained chat rate accepted from one agent. 0 disables. Default 20"`
+	MessageBurst          int      `toml:"message_burst" desc:"Messages one agent may send at once before the sustained rate applies. Default 40"`
+	AllowedNetworks       []string `toml:"allowed_networks" desc:"Optional. Only accept agents from these addresses or CIDRs, e.g. [\"203.0.113.4\", \"10.0.0.0/8\"]\n# Empty accepts any source. A malformed entry is a startup error, never a silent allow-all"`
+}
+
+// BanDurationValue parses the configured ban duration.
+func (c *HubLimits) BanDurationValue() time.Duration {
+	d, err := time.ParseDuration(c.BanDuration)
+	if err != nil || d <= 0 {
+		return 15 * time.Minute
+	}
+	return d
 }
 
 // HubChannel is one logical chat channel the hub knows how to route.
@@ -133,6 +155,7 @@ func (c *HubConfig) verify() error {
 	if c.QueueSize < 16 {
 		c.QueueSize = 256
 	}
+	c.Limits.applyDefaults()
 	if c.AdvertiseAddr == "" {
 		c.AdvertiseAddr = c.Listen
 	}
@@ -247,6 +270,45 @@ func (c *AgentConf) verify() error {
 		ch.inboundTmpl = tmpl
 	}
 	return nil
+}
+
+// applyDefaults fills in unset limits.
+//
+// A negative value means "off" and is normalized to zero; only an unset field
+// picks up the default. That distinction matters because an operator who
+// deliberately disables a limit must not have it silently switched back on.
+func (c *HubLimits) applyDefaults() {
+	if c.MaxAgents == 0 {
+		c.MaxAgents = 64
+	} else if c.MaxAgents < 0 {
+		c.MaxAgents = 0
+	}
+
+	if c.ConnectionsPerMinute == 0 {
+		c.ConnectionsPerMinute = 30
+	} else if c.ConnectionsPerMinute < 0 {
+		c.ConnectionsPerMinute = 0
+	}
+
+	if c.AuthFailuresBeforeBan == 0 {
+		c.AuthFailuresBeforeBan = 5
+	} else if c.AuthFailuresBeforeBan < 0 {
+		c.AuthFailuresBeforeBan = 0
+	}
+
+	if c.MessagesPerSecond == 0 {
+		c.MessagesPerSecond = 20
+	} else if c.MessagesPerSecond < 0 {
+		c.MessagesPerSecond = 0
+	}
+
+	if c.MessageBurst <= 0 {
+		c.MessageBurst = 40
+	}
+
+	if c.BanDuration == "" {
+		c.BanDuration = "15m"
+	}
 }
 
 // Channel finds a hub channel by name.

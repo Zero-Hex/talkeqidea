@@ -11,6 +11,7 @@ import (
 	"github.com/xackery/talkeq/config"
 	"github.com/xackery/talkeq/hub"
 	"github.com/xackery/talkeq/sanitize"
+	"github.com/xackery/talkeq/service"
 )
 
 // RunHub walks an operator through configuring the hub.
@@ -282,6 +283,8 @@ func hubFinishStep(ctx context.Context, p *Prompter, cfg *config.Config) error {
 		p.Printf("\n")
 	}
 
+	hubFirewallStep(p, cfg)
+
 	addAgent, err := p.Confirm("Add your first game server now?", true)
 	if err != nil {
 		return err
@@ -309,6 +312,35 @@ func hubFinishStep(ctx context.Context, p *Prompter, cfg *config.Config) error {
 	p.Printf("\n")
 	p.Note("Start the hub with: talkeq-hub")
 	return nil
+}
+
+// hubFirewallStep shows the command that opens the hub's port.
+//
+// It prints rather than runs: changing an operator's firewall should never be
+// a side effect of answering setup questions, and on a cloud host the rule
+// that matters is usually in a security group this machine cannot see anyway.
+func hubFirewallStep(p *Prompter, cfg *config.Config) {
+	port := 34197
+	if _, portStr, err := net.SplitHostPort(cfg.Relay.Hub.Listen); err == nil {
+		if parsed, err := strconv.Atoi(portStr); err == nil && parsed > 0 {
+			port = parsed
+		}
+	}
+
+	plan := service.PlanFirewall(port, "talkeq-hub")
+
+	p.Note("Agents need to reach inbound TCP %d on this box.", port)
+	if plan.Manual != "" {
+		p.Note("%s", plan.Manual)
+	} else {
+		p.Printf("\n")
+		p.Note("To open it with %s:", plan.Tool)
+		p.Printf("\n    %s\n\n", plan.String())
+		p.Note("Or run: talkeq-hub firewall --apply")
+	}
+	p.Note("If this box is behind a router or a cloud security group, the rule")
+	p.Note("there matters too.")
+	p.Printf("\n")
 }
 
 func hubEnrollOne(p *Prompter, h *hub.Hub) error {

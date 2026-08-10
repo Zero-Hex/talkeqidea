@@ -165,12 +165,86 @@ wording stay independent. The hub side is `discord_pattern` under
 as WireGuard. It sends tokens in the clear; the setup wizard asks twice before
 accepting it.
 
+### Hardening
+
+The hub is the only internet-facing part of a relay, so it assumes hostile
+traffic. Defaults are in `[relay.hub.limits]`:
+
+Setting|Default|What it does
+---|---|---
+`max_agents`|64|Caps concurrent servers
+`connections_per_minute`|30|Per source address; excess gets HTTP 429 with `Retry-After`
+`auth_failures_before_ban`|5|Bad tokens or codes from one address before it is blocked
+`ban_duration`|15m|First block. Repeat offenders double, up to a day
+`messages_per_second`|20|Sustained chat rate per agent
+`message_burst`|40|Messages one agent may send at once
+`allowed_networks`|(empty)|Optional. Restrict to addresses or CIDRs
+
+Set any numeric limit to `-1` to disable it deliberately; `0` means "unset" and
+picks up the default.
+
+`allowed_networks` accepts both forms, e.g.
+`["203.0.113.4", "10.0.0.0/8"]`. A malformed entry stops the hub starting
+rather than silently allowing everyone — a typo that widened the allowlist to
+the internet would be the worst possible failure.
+
+Blocks are held in memory and cleared by restarting the hub.
+
 ### Choosing a port
 
-The default is 34197. Note that an unusual port is not a security measure —
-internet-wide scanners sweep every port continuously. It is only there to avoid
-sitting on a number people probe by habit. What protects the hub is the token
-authentication and TLS above.
+The default is 34197. An unusual port is **not** a security measure — scanners
+sweep every port continuously. It only avoids a number people probe by habit.
+What protects the hub is the token authentication, TLS, and the limits above.
+
+Ports above 49152 are deliberately avoided: that range is what the OS hands out
+for outbound connections, and binding a service there can collide with it.
+
+### Running as a service
+
+Both programs install themselves on Windows and Linux:
+
+```
+talkeq-hub service install     # or talkeq-agent service install
+talkeq-hub service start
+talkeq-hub service status
+talkeq-hub service stop
+talkeq-hub service uninstall
+```
+
+Installing needs `sudo` on Linux and "Run as administrator" on Windows; the
+commands say so if you forget.
+
+**Linux** writes a systemd unit to `/etc/systemd/system/`. It restarts on
+failure, waits for real network connectivity at boot, and is sandboxed with
+`ProtectSystem=strict`, `PrivateTmp`, `NoNewPrivileges` and a restricted set of
+address families. Only the working directory is writable.
+
+If `systemctl` exists but systemd is not PID 1 — a container, or WSL1 — the
+install refuses with an explanation instead of half-writing a unit file. Use
+your container runtime's restart policy there.
+
+**Windows** registers with the Service Control Manager, starts automatically,
+and restarts on failure. Because Windows starts services in
+`C:\Windows\System32` with no way to configure otherwise, the binary changes
+to its own directory at startup; `talkeq.conf`, the certificate, the roster and
+the log all live beside the executable.
+
+**macOS and BSD** have no service integration. The relay runs fine; set up
+launchd or rc.d yourself.
+
+### Firewall
+
+Only the hub needs an open port. Agents dial out.
+
+```
+talkeq-hub firewall            # show the command for this machine
+talkeq-hub firewall --apply    # run it
+```
+
+It detects `netsh` on Windows and `ufw` or `firewalld` on Linux, and prints
+manual guidance when it finds neither. Setup shows the command but never runs
+it — changing a firewall should not be a side effect of answering questions. If
+the box sits behind a router or a cloud security group, that rule matters too.
 
 ### Loop prevention
 

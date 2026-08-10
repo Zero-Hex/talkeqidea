@@ -2,15 +2,18 @@ package hub
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/xackery/talkeq/config"
+	"github.com/xackery/talkeq/guard"
 	"github.com/xackery/talkeq/relay"
 	"github.com/xackery/talkeq/request"
 	"github.com/xackery/talkeq/sanitize"
@@ -28,6 +31,7 @@ type Hub struct {
 	roster   *Roster
 	enroll   *EnrollStore
 	router   *Router
+	guard    *guard.Guard
 	sessions map[string]*Session
 
 	subscribers []func(interface{}) error
@@ -57,10 +61,25 @@ func New(ctx context.Context, cfg config.HubConfig) (*Hub, error) {
 		return nil, fmt.Errorf("enroll store: %w", err)
 	}
 
+	limiter, err := guard.New(guard.Limits{
+		MaxAgents:             cfg.Limits.MaxAgents,
+		ConnectionsPerMinute:  cfg.Limits.ConnectionsPerMinute,
+		AuthFailuresBeforeBan: cfg.Limits.AuthFailuresBeforeBan,
+		BanDuration:           cfg.Limits.BanDurationValue(),
+		MessagesPerSecond:     cfg.Limits.MessagesPerSecond,
+		MessageBurst:          cfg.Limits.MessageBurst,
+		AllowedNetworks:       cfg.Limits.AllowedNetworks,
+	})
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("limits: %w", err)
+	}
+
 	h := &Hub{
 		cfg:      cfg,
 		roster:   roster,
 		enroll:   enroll,
+		guard:    limiter,
 		sessions: make(map[string]*Session),
 		ctx:      ctx,
 		cancel:   cancel,
@@ -71,6 +90,9 @@ func New(ctx context.Context, cfg config.HubConfig) (*Hub, error) {
 
 // Roster exposes the agent roster for the CLI subcommands.
 func (h *Hub) Roster() *Roster { return h.roster }
+
+// Guard exposes the abuse controls, for status output and manual unbanning.
+func (h *Hub) Guard() *guard.Guard { return h.guard }
 
 // Enroll exposes the enrollment store for the CLI subcommands.
 func (h *Hub) Enroll() *EnrollStore { return h.enroll }
@@ -238,6 +260,21 @@ var upgrader = websocket.Upgrader{
 }
 
 func (h *Hub) handleAgent(w http.ResponseWriter, r *http.Request) {
+	// Admission is decided before the upgrade so a rejected source costs a
+	// cheap HTTP response rather than a websocket handshake, and gets a status
+	// code it can act on.
+	if err := h.guard.AllowConnection(r.RemoteAddr, h.sessionCount()); err != nil {
+		var rejection *guard.Rejection
+		status := http.StatusForbidden
+		if errors.As(err, &rejection) && rejection.RetryAfter > 0 {
+			status = http.StatusTooManyRequests
+			w.Header().Set("Retry-After", strconv.Itoa(int(rejection.RetryAfter.Seconds())+1))
+		}
+		tlog.Warnf("[hub] refused %s: %s", r.RemoteAddr, err)
+		http.Error(w, err.Error(), status)
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		tlog.Debugf("[hub] upgrade failed: %s", err)
@@ -288,12 +325,15 @@ func (h *Hub) handleAgent(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// Log the claimed key and the remote address, never the token.
 		tlog.Warnf("[hub] rejected agent claiming %q from %s: %s", sanitize.ServerKey(hello.ServerKey), r.RemoteAddr, err)
+		h.guard.RecordAuthFailure(r.RemoteAddr)
 		session.sendError(relay.ErrCodeUnauthorized, "token not accepted")
 		return
 	}
+	h.guard.RecordAuthSuccess(r.RemoteAddr)
 
 	session.serverKey = entry.ServerKey
 	session.shortName = entry.ShortName
+	session.limiter = h.guard.NewMessageLimiter()
 
 	welcome, err := relay.NewFrame(relay.FrameWelcome, &relay.Welcome{
 		ProtocolVersion: relay.ProtocolVersion,
@@ -348,6 +388,9 @@ func (h *Hub) handleEnroll(conn *websocket.Conn, frame *relay.Frame, remoteAddr 
 	entry, err := h.enroll.Redeem(req.Code)
 	if err != nil {
 		tlog.Warnf("[hub] enrollment from %s rejected: %s", remoteAddr, err)
+		// Guessing codes is the same kind of attack as guessing tokens, and
+		// earns the same escalating block.
+		h.guard.RecordAuthFailure(remoteAddr)
 		// Deliberately vague: distinguishing "unknown" from "expired" would
 		// tell a guesser when they had found a real code.
 		session.sendError(relay.ErrCodeEnrollment, "enrollment code was not accepted")
@@ -412,6 +455,15 @@ func (h *Hub) removeSession(s *Session) {
 func (h *Hub) onFrame(s *Session, frame *relay.Frame) {
 	switch frame.Type {
 	case relay.FrameEvent:
+		if !s.limiter.Allow() {
+			// Log once per burst rather than per message, or a flood would
+			// turn into a log flood.
+			if s.limiter.Dropped()%100 == 1 {
+				tlog.Warnf("[hub] %s is over its message rate, dropping (%d so far)", s.serverKey, s.limiter.Dropped())
+			}
+			return
+		}
+
 		event := &relay.Event{}
 		if err := frame.Decode(event); err != nil {
 			tlog.Warnf("[hub] bad event from %s: %s", s.serverKey, err)
@@ -506,6 +558,12 @@ func (h *Hub) notify(req interface{}) {
 			tlog.Warnf("[hub->subscriber %d] failed: %s", i, err)
 		}
 	}
+}
+
+func (h *Hub) sessionCount() int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.sessions)
 }
 
 func (h *Hub) session(serverKey string) *Session {

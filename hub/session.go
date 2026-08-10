@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/xackery/talkeq/guard"
 	"github.com/xackery/talkeq/relay"
 	"github.com/xackery/talkeq/tlog"
 )
@@ -31,6 +32,10 @@ type Session struct {
 
 	conn *websocket.Conn
 	out  chan *relay.Frame
+
+	// limiter caps how fast this agent may send. Set after authentication,
+	// since an unauthenticated connection never gets far enough to send chat.
+	limiter *guard.Limiter
 
 	closeOnce sync.Once
 	done      chan struct{}

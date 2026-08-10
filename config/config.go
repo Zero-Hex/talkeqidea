@@ -189,6 +189,14 @@ func getDefaultConfig() Config {
 	cfg.Relay.Hub.TLSKeyPath = "talkeq_hub_key.pem"
 	cfg.Relay.Hub.HeartbeatSecs = 30
 	cfg.Relay.Hub.QueueSize = 256
+	cfg.Relay.Hub.Limits = HubLimits{
+		MaxAgents:             64,
+		ConnectionsPerMinute:  30,
+		AuthFailuresBeforeBan: 5,
+		BanDuration:           "15m",
+		MessagesPerSecond:     20,
+		MessageBurst:          40,
+	}
 	cfg.Relay.Hub.Channels = append(cfg.Relay.Hub.Channels, HubChannel{
 		Name:             "ooc",
 		IsEnabled:        true,

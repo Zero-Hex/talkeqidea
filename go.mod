@@ -1,6 +1,6 @@
 module github.com/xackery/talkeq
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/bwmarrin/discordgo v0.27.1
@@ -13,13 +13,13 @@ require (
 	github.com/ziutek/telnet v0.0.0-20180329124119-c3b780dc415b
 	go.uber.org/zap v1.26.0
 	golang.org/x/crypto v0.32.0
+	golang.org/x/sys v0.29.0
 	golang.org/x/text v0.21.0
 )
 
 require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )

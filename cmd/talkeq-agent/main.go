@@ -9,11 +9,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/signal"
 	"runtime"
 
 	"github.com/xackery/talkeq/client"
 	"github.com/xackery/talkeq/config"
+	"github.com/xackery/talkeq/service"
 	"github.com/xackery/talkeq/setup"
 	"github.com/xackery/talkeq/tlog"
 )
@@ -46,6 +46,8 @@ func run() error {
 			}
 			waitOnWindows()
 			return nil
+		case "service":
+			return runServiceCommand(args[1:])
 		case "version", "--version", "-v":
 			fmt.Printf("talkeq-agent %s\n", Version)
 			return nil
@@ -71,49 +73,51 @@ func run() error {
 	return serve()
 }
 
+// serve runs the agent until the stop channel closes. service.Run supplies
+// that channel from signals on Linux or from the Windows Service Control
+// Manager, so a console run and a service run share one code path.
 func serve() error {
-	w, err := os.Create("talkeq.log")
-	if err != nil {
-		return fmt.Errorf("create log: %w", err)
-	}
-	defer w.Close()
-	tlog.Init(w, os.Stdout)
-
-	tlog.Infof("starting talkeq-agent %s", Version)
-
-	cfg, err := config.Load(config.DefaultPath)
-	if err != nil {
-		return fmt.Errorf("config: %w", err)
-	}
-	if cfg.Relay.Mode != config.ModeAgent {
-		return fmt.Errorf("talkeq.conf has relay.mode = %q; run 'talkeq-agent setup' to configure this box as an agent", cfg.Relay.Mode)
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-
-	c, err := client.New(ctx)
-	if err != nil {
-		return fmt.Errorf("new client: %w", err)
-	}
-	if err := c.Connect(ctx); err != nil {
-		return fmt.Errorf("connect: %w", err)
-	}
-
-	select {
-	case <-ctx.Done():
-	case <-signalChan:
-		if err := c.Disconnect(ctx); err != nil {
-			return fmt.Errorf("disconnect: %w", err)
+	return service.Run(serviceName, func(stop <-chan struct{}) error {
+		w, err := os.Create("talkeq.log")
+		if err != nil {
+			return fmt.Errorf("create log: %w", err)
 		}
-		tlog.Infof("exiting, interrupt signal sent")
-	}
+		defer w.Close()
+		tlog.Init(w, os.Stdout)
 
-	tlog.Sync()
-	return nil
+		tlog.Infof("starting talkeq-agent %s", Version)
+
+		cfg, err := config.Load(config.DefaultPath)
+		if err != nil {
+			return fmt.Errorf("config: %w", err)
+		}
+		if cfg.Relay.Mode != config.ModeAgent {
+			return fmt.Errorf("talkeq.conf has relay.mode = %q; run 'talkeq-agent setup' to configure this box as an agent", cfg.Relay.Mode)
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		c, err := client.New(ctx)
+		if err != nil {
+			return fmt.Errorf("new client: %w", err)
+		}
+		if err := c.Connect(ctx); err != nil {
+			return fmt.Errorf("connect: %w", err)
+		}
+
+		select {
+		case <-ctx.Done():
+		case <-stop:
+			if err := c.Disconnect(ctx); err != nil {
+				return fmt.Errorf("disconnect: %w", err)
+			}
+			tlog.Infof("exiting, stop requested")
+		}
+
+		tlog.Sync()
+		return nil
+	})
 }
 
 func usage() {
@@ -121,8 +125,9 @@ func usage() {
 	fmt.Println()
 	fmt.Println("With no command, connects to the hub and relays chat.")
 	fmt.Println()
-	fmt.Println("  setup     interactive configuration and enrollment")
-	fmt.Println("  version   print the version")
+	fmt.Println("  setup                              interactive configuration and enrollment")
+	fmt.Println("  service install|start|stop|status  run as a background service")
+	fmt.Println("  version                            print the version")
 }
 
 func waitOnWindows() {

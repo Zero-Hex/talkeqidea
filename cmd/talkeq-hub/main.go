@@ -6,11 +6,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/signal"
 	"runtime"
 
 	"github.com/xackery/talkeq/client"
 	"github.com/xackery/talkeq/config"
+	"github.com/xackery/talkeq/service"
 	"github.com/xackery/talkeq/setup"
 	"github.com/xackery/talkeq/tlog"
 )
@@ -47,6 +47,12 @@ func run() error {
 			return runEnrollCommand(args[1:])
 		case "status":
 			return runStatusCommand()
+		case "service":
+			return runServiceCommand(args[1:])
+		case "firewall":
+			return runFirewallCommand(args[1:])
+		case "unban":
+			return runUnbanCommand(args[1:])
 		case "version", "--version", "-v":
 			fmt.Printf("talkeq-hub %s\n", Version)
 			return nil
@@ -73,48 +79,66 @@ func run() error {
 	return serve()
 }
 
+// serve runs the hub until the stop channel closes.
+//
+// service.Run supplies that channel from whichever source applies: SIGINT and
+// SIGTERM on Linux, or a Windows Service Control Manager stop request. Wiring
+// it this way means one code path serves a console run and a service run.
 func serve() error {
-	w, err := os.Create("talkeq.log")
-	if err != nil {
-		return fmt.Errorf("create log: %w", err)
-	}
-	defer w.Close()
-	tlog.Init(w, os.Stdout)
-
-	tlog.Infof("starting talkeq-hub %s", Version)
-
-	cfg, err := config.Load(config.DefaultPath)
-	if err != nil {
-		return fmt.Errorf("config: %w", err)
-	}
-	if cfg.Relay.Mode != config.ModeHub {
-		return fmt.Errorf("talkeq.conf has relay.mode = %q; run 'talkeq-hub setup' to configure this box as a hub", cfg.Relay.Mode)
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-
-	c, err := client.New(ctx)
-	if err != nil {
-		return fmt.Errorf("new client: %w", err)
-	}
-	if err := c.Connect(ctx); err != nil {
-		return fmt.Errorf("connect: %w", err)
-	}
-
-	select {
-	case <-ctx.Done():
-	case <-signalChan:
-		if err := c.Disconnect(ctx); err != nil {
-			return fmt.Errorf("disconnect: %w", err)
+	return service.Run(serviceName, func(stop <-chan struct{}) error {
+		w, err := os.Create("talkeq.log")
+		if err != nil {
+			return fmt.Errorf("create log: %w", err)
 		}
-		tlog.Infof("exiting, interrupt signal sent")
-	}
+		defer w.Close()
+		tlog.Init(w, os.Stdout)
 
-	tlog.Sync()
+		tlog.Infof("starting talkeq-hub %s", Version)
+
+		cfg, err := config.Load(config.DefaultPath)
+		if err != nil {
+			return fmt.Errorf("config: %w", err)
+		}
+		if cfg.Relay.Mode != config.ModeHub {
+			return fmt.Errorf("talkeq.conf has relay.mode = %q; run 'talkeq-hub setup' to configure this box as a hub", cfg.Relay.Mode)
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		c, err := client.New(ctx)
+		if err != nil {
+			return fmt.Errorf("new client: %w", err)
+		}
+		if err := c.Connect(ctx); err != nil {
+			return fmt.Errorf("connect: %w", err)
+		}
+
+		select {
+		case <-ctx.Done():
+		case <-stop:
+			if err := c.Disconnect(ctx); err != nil {
+				return fmt.Errorf("disconnect: %w", err)
+			}
+			tlog.Infof("exiting, stop requested")
+		}
+
+		tlog.Sync()
+		return nil
+	})
+}
+
+// runUnbanCommand lifts a temporary block. Bans live in the running hub's
+// memory, so this only reports how to clear one.
+func runUnbanCommand(args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("usage: talkeq-hub unban <address>")
+	}
+	fmt.Printf("Blocks are held in memory by the running hub and are cleared by\n")
+	fmt.Printf("restarting it:\n\n")
+	fmt.Printf("    talkeq-hub service stop && talkeq-hub service start\n\n")
+	fmt.Printf("To stop %s being blocked again, add it to allowed_networks in\n", args[0])
+	fmt.Printf("talkeq.conf, or raise auth_failures_before_ban.\n")
 	return nil
 }
 
@@ -133,6 +157,9 @@ func usage() {
 	fmt.Println("  agent remove <server-key>          revoke a server")
 	fmt.Println("  agent disable|enable <server-key>  block or restore a server")
 	fmt.Println("  status                             show configured servers")
+	fmt.Println("  service install|start|stop|status  run as a background service")
+	fmt.Println("  firewall [--apply]                 show or apply the rule opening the hub port")
+	fmt.Println("  unban <address>                    lift a temporary block early")
 	fmt.Println("  version                            print the version")
 }
 
