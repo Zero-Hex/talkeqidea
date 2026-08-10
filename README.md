@@ -18,6 +18,71 @@ and the `talkeq_*` data files to their new names, rewrites the paths recorded
 inside the config, and tells you what it changed. Join codes issued by a TalkEQ
 hub are still accepted.
 
+## Getting the binaries
+
+**From a release or a CI build.** Every push builds all three programs for
+Windows, Linux and macOS and attaches them to the run. Open the Actions tab,
+pick a run, and download the `modern-eq-chat-*` artifact. Pushes to `master`
+also create a release.
+
+**From source.** With Go 1.24 or newer:
+
+```
+git clone https://github.com/Zero-Hex/modern-eq-chat
+cd modern-eq-chat
+make build-all      # everything, all platforms, into bin/
+go build ./cmd/modern-eq-chat-hub      # or just the one you need
+go build ./cmd/modern-eq-chat-agent
+```
+
+## Trying it out in five minutes
+
+You can exercise the whole relay on a single machine, with no Discord bot and
+no EQEMU server. Put the hub and the agent in **separate folders** — each one
+keeps its config beside itself.
+
+```
+test\
+  hub\    modern-eq-chat-hub.exe
+  agent\  modern-eq-chat-agent.exe
+```
+
+1. Run `modern-eq-chat-hub.exe` in `hub\`. It walks you through setup. Leave
+   the Discord answers blank for now, take the defaults for the port, and
+   answer `n` to "does this box also run an EQEMU server".
+   It prints a **certificate fingerprint** — leave that window open.
+2. Run `modern-eq-chat-hub.exe` again to start the hub. Leave it running.
+3. In a second window, from `hub\`, run
+   `modern-eq-chat-hub.exe enroll server1 "Test Server"`.
+   It prints a hub address and an **enrollment code**.
+4. Run `modern-eq-chat-agent.exe` in `agent\`. Give it the address and code.
+   It shows the fingerprint and asks you to confirm it matches step 1 — it
+   should. Take the telnet defaults.
+5. Run `modern-eq-chat-agent.exe` again to start it.
+
+The hub log should show `agent server1 (Test Server) connected`, and the agent
+log `connected to hub as server1`. The agent will also complain that it cannot
+reach telnet on 127.0.0.1:9000 — that is expected with no EQEMU server running,
+and does not stop the relay link from working.
+
+To see the management interface, run `modern-eq-chat-hub.exe web password` in
+`hub\`, set a password, restart the hub, and open
+`http://127.0.0.1:34198`. The **Test** button on a server will report the relay
+round trip and tell you the game server is unreachable, which is the correct
+answer at this stage.
+
+### Then add the real pieces
+
+* **Discord.** Re-run `modern-eq-chat-hub.exe setup` and supply the bot token,
+  application ID, server ID and an OOC channel ID. Make sure **Message Content
+  Intent** is enabled on the Bot page at
+  <https://discord.com/developers/>; without it Discord sends empty message
+  bodies and nothing relays. The hub says so explicitly if it is missing.
+* **A game server.** Point the agent's telnet setting at your EQEMU server and
+  enable telnet on it. Chat in OOC and it should appear in Discord.
+* **A second server.** Repeat the enrollment on another box. That is when
+  cross-server chat actually starts doing something.
+
 ## Setup
 
 * Go to [releases](https://github.com/Zero-Hex/modern-eq-chat/releases) and download the latest exe or binary for your operating systsem.
