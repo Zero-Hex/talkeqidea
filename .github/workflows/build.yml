@@ -1,14 +1,45 @@
 name: Build Go Binaries and Prep Release
-on: [push]
+on:
+  push:
+  workflow_dispatch:
 jobs:
   build_and_preview:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      # Pin the toolchain rather than inheriting whatever the runner ships.
+      # go.mod requires 1.24, and an unpinned runner silently changing version
+      # is the kind of thing that breaks a release build at the worst moment.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          check-latest: true
       - run: make set-version-${{github.run_number}}
-      - run: go get ./...
-      - run: go test -tags ci,wayland ./...
+      - run: go mod download
+      - run: go vet -printf.funcs=Debugf,Infof,Warnf,Errorf,Fatalf,Panicf ./...
+      - run: go test -race -tags ci,wayland ./...
       - run: make build-all
+
+      # Every push gets downloadable builds, not just master. Without this a
+      # branch build produces nothing you can actually run, which makes CI
+      # useless for testing a change before merging it.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: modern-eq-chat-${{github.run_number}}
+          # 14 days is plenty for testing a branch and keeps storage sane.
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            bin/modern-eq-chat-hub-windows.exe
+            bin/modern-eq-chat-agent-windows.exe
+            bin/modern-eq-chat-windows.exe
+            bin/modern-eq-chat-hub-linux
+            bin/modern-eq-chat-agent-linux
+            bin/modern-eq-chat-linux
+            bin/modern-eq-chat-hub-darwin
+            bin/modern-eq-chat-agent-darwin
+            bin/modern-eq-chat-darwin
+
       - uses: "marvinpinto/action-automatic-releases@latest"
         if: github.ref == 'refs/heads/master'
         with:
@@ -17,6 +48,12 @@ jobs:
           prerelease: true
           title: "${{env.VERSION}}"
           files: |
-            bin/talkeq-linux
-            bin/talkeq-windows.exe
-            bin/talkeq-darwin
+            bin/modern-eq-chat-linux
+            bin/modern-eq-chat-windows.exe
+            bin/modern-eq-chat-darwin
+            bin/modern-eq-chat-hub-linux
+            bin/modern-eq-chat-hub-windows.exe
+            bin/modern-eq-chat-hub-darwin
+            bin/modern-eq-chat-agent-linux
+            bin/modern-eq-chat-agent-windows.exe
+            bin/modern-eq-chat-agent-darwin

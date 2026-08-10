@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xackery/talkeq/config"
+	"github.com/Zero-Hex/modern-eq-chat/config"
 )
 
 func TestLogRotation(t *testing.T) {

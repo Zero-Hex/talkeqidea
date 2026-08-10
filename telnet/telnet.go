@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xackery/talkeq/characterdb"
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/request"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/characterdb"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/request"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 	"github.com/ziutek/telnet"
 )
 
@@ -187,10 +187,10 @@ func (t *Telnet) Connect(ctx context.Context) error {
 				ChannelID: route.ChannelID,
 				Message:   buf.String(),
 			}
-			for _, s := range t.subscribers {
+			for i, s := range t.subscribers {
 				err = s(req)
 				if err != nil {
-					tlog.Warnf("[telnet->discord subscriber %d] channelID %s message %s failed: %w", route.ChannelID, req.Message, err)
+					tlog.Warnf("[telnet->discord subscriber %d] channelID %s message %s failed: %s", i, route.ChannelID, req.Message, err)
 					continue
 				}
 				tlog.Infof("[telnet->discord] channelID %s message: %s", route.ChannelID, req.Message)
@@ -291,7 +291,7 @@ func (t *Telnet) Disconnect(ctx context.Context) error {
 			for i, s := range t.subscribers {
 				err = s(req)
 				if err != nil {
-					tlog.Warnf("[telnet->discord subscriber %d] channelID %s message %s failed: %s", i, route.ChannelID, req.Message)
+					tlog.Warnf("[telnet->discord subscriber %d] channelID %s message %s failed: %s", i, route.ChannelID, req.Message, err)
 					continue
 				}
 				tlog.Infof("[telnet->discord subscriber %d] channelID %s message: %s", i, route.ChannelID, req.Message)

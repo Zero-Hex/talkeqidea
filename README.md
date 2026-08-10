@@ -1,21 +1,96 @@
-# TalkEQ
+# Modern EQEMU to Discord Chat
 
-[![GoDoc](https://godoc.org/github.com/xackery/talkeq?status.svg)](https://godoc.org/github.com/xackery/talkeq) [![Go Report Card](https://goreportcard.com/badge/github.com/xackery/talkeq)](https://goreportcard.com/report/github.com/xackery/talkeq)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Zero-Hex/modern-eq-chat)](https://goreportcard.com/report/github.com/Zero-Hex/modern-eq-chat)
+[![Build](https://github.com/Zero-Hex/modern-eq-chat/actions/workflows/build.yml/badge.svg)](https://github.com/Zero-Hex/modern-eq-chat/actions/workflows/build.yml)
 
-[![Total alerts](https://img.shields.io/lgtm/alerts/g/xackery/talkeq.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/xackery/talkeq/alerts/)
+Bridges EverQuest server chat to Discord, and links several EQEMU servers to
+each other so players on different servers share one conversation.
 
-[![Platform Tests & Build](https://github.com/xackery/talkeq/actions/workflows/build_workflow.yml/badge.svg?branch=master)](https://github.com/xackery/talkeq/actions/workflows/build_workflow.yml)
+A fork of [TalkEQ](https://github.com/xackery/talkeq) by xackery, which in turn
+extends [DiscordEQ](https://github.com/xackery/discordeq). This fork adds
+cross-server chat, a hub-and-agent deployment model, hardening, Windows and
+Linux service installation, and a local management interface.
 
-TalkEQ bridges links between everquest and other services. Extends [DiscordEQ](https://github.com/xackery/discordeq).
+### Upgrading from TalkEQ
+
+Put the new binary in the same directory and run it. It renames `talkeq.conf`
+and the `talkeq_*` data files to their new names, rewrites the paths recorded
+inside the config, and tells you what it changed. Join codes issued by a TalkEQ
+hub are still accepted.
+
+## Getting the binaries
+
+**From a release or a CI build.** Every push builds all three programs for
+Windows, Linux and macOS and attaches them to the run. Open the Actions tab,
+pick a run, and download the `modern-eq-chat-*` artifact. Pushes to `master`
+also create a release.
+
+**From source.** With Go 1.24 or newer:
+
+```
+git clone https://github.com/Zero-Hex/modern-eq-chat
+cd modern-eq-chat
+make build-all      # everything, all platforms, into bin/
+go build ./cmd/modern-eq-chat-hub      # or just the one you need
+go build ./cmd/modern-eq-chat-agent
+```
+
+## Trying it out in five minutes
+
+You can exercise the whole relay on a single machine, with no Discord bot and
+no EQEMU server. Put the hub and the agent in **separate folders** — each one
+keeps its config beside itself.
+
+```
+test\
+  hub\    modern-eq-chat-hub.exe
+  agent\  modern-eq-chat-agent.exe
+```
+
+1. Run `modern-eq-chat-hub.exe` in `hub\`. It walks you through setup. Leave
+   the Discord answers blank for now, take the defaults for the port, and
+   answer `n` to "does this box also run an EQEMU server".
+   It prints a **certificate fingerprint** — leave that window open.
+2. Run `modern-eq-chat-hub.exe` again to start the hub. Leave it running.
+3. In a second window, from `hub\`, run
+   `modern-eq-chat-hub.exe enroll server1 "Test Server"`.
+   It prints a hub address and an **enrollment code**.
+4. Run `modern-eq-chat-agent.exe` in `agent\`. Give it the address and code.
+   It shows the fingerprint and asks you to confirm it matches step 1 — it
+   should. Take the telnet defaults.
+5. Run `modern-eq-chat-agent.exe` again to start it.
+
+The hub log should show `agent server1 (Test Server) connected`, and the agent
+log `connected to hub as server1`. The agent will also complain that it cannot
+reach telnet on 127.0.0.1:9000 — that is expected with no EQEMU server running,
+and does not stop the relay link from working.
+
+To see the management interface, run `modern-eq-chat-hub.exe web password` in
+`hub\`, set a password, restart the hub, and open
+`http://127.0.0.1:34198`. The **Test** button on a server will report the relay
+round trip and tell you the game server is unreachable, which is the correct
+answer at this stage.
+
+### Then add the real pieces
+
+* **Discord.** Re-run `modern-eq-chat-hub.exe setup` and supply the bot token,
+  application ID, server ID and an OOC channel ID. Make sure **Message Content
+  Intent** is enabled on the Bot page at
+  <https://discord.com/developers/>; without it Discord sends empty message
+  bodies and nothing relays. The hub says so explicitly if it is missing.
+* **A game server.** Point the agent's telnet setting at your EQEMU server and
+  enable telnet on it. Chat in OOC and it should appear in Discord.
+* **A second server.** Repeat the enrollment on another box. That is when
+  cross-server chat actually starts doing something.
 
 ## Setup
 
-* Go to [releases](https://github.com/xackery/talkeq/releases) and download the latest exe or binary for your operating systsem.
+* Go to [releases](https://github.com/Zero-Hex/modern-eq-chat/releases) and download the latest exe or binary for your operating systsem.
 * Go to https://discordapp.com/developers/ and sign in
 * Click New Application the top right area
 * Write anything you wish for the app name, click Create App
-* Start the talkeq executable once. This generates a talkeq.conf file
-* Copy the Application ID into your talkeq.conf's discord client_id section
+* Start the modern-eq-chat executable once. This generates a modern-eq-chat.conf file
+* Copy the Application ID into your modern-eq-chat.conf's discord client_id section
 * On the left pane, click Bot
 * Click the Reset Token button, Yes, do it!
 * Press the copy button in the Token section
@@ -25,10 +100,292 @@ TalkEQ bridges links between everquest and other services. Extends [DiscordEQ](h
 * Open the link and authorize your bot to access your server.
 * Ensure the bot now appears offline on your server's general channel
 
-### Configure TalkEQ
+### Configure Modern EQ Chat
 
-* Start talkeq up. The first run, it will say `a new talkeq.conf file was created. Please open this file and configure talkeq, then run it again.`.
-* Edit the talkeq.conf, walking through each section and applying it for your situation. There are comments that help you through the process.
+* Start modern-eq-chat up. The first run, it will say `a new modern-eq-chat.conf file was created. Please open this file and configure modern-eq-chat, then run it again.`.
+* Edit the modern-eq-chat.conf, walking through each section and applying it for your situation. There are comments that help you through the process.
+
+## Cross-Server Chat (Relay)
+
+Modern EQ Chat can link several EQEMU servers so that chat on one is visible on the
+others, with Discord mirroring all of it. When Soandso says something in OOC on
+server 1:
+
+```
+Discord     Soandso **OOC** [Vanilla]: Hey does anyone know where Master Claude spawns?
+Server 2    Soandso says from Vanilla, 'Hey does anyone know where Master Claude spawns?'
+Server 3    Soandso says from Vanilla, 'Hey does anyone know where Master Claude spawns?'
+```
+
+Messages typed in Discord travel the same path in reverse, reaching every
+connected server.
+
+### How it fits together
+
+There are two programs. **`modern-eq-chat-hub`** runs on one box and holds the Discord
+bot, the routing rules, and the list of authorized servers. **`modern-eq-chat-agent`**
+runs on each game server, reports its chat, and injects what comes back.
+
+```
+   server 1 (modern-eq-chat-agent) --+
+   server 2 (modern-eq-chat-agent) --+-- modern-eq-chat-hub -- Discord
+   server 3 (modern-eq-chat-agent) --+
+```
+
+Agents dial **out** to the hub and hold the connection open. That means:
+
+* No port forwarding on any game server, and no fixed IP needed.
+* Agents behind NAT work with no configuration.
+* One open port in the whole system, on the hub.
+* A compromised game server holds only its own token. No Discord credentials
+  and no other server's access.
+
+The hub can also be a game server itself; its setup asks.
+
+The original `modern-eq-chat` binary is unchanged and still runs a single server on its
+own. Cross-server chat is opt-in.
+
+### Setting up the hub
+
+Run `modern-eq-chat-hub` on the box that will host your Discord bot. With no config
+present it walks you through setup, or run `modern-eq-chat-hub setup` to reconfigure.
+
+It asks for your Discord bot credentials, the OOC channel, which port to
+listen on, and the address agents should dial. At the end it prints the
+certificate fingerprint:
+
+```
+  Certificate fingerprint:
+
+    1d29bcd19333e1d474bf174d2a16f51f26c2150bd3309251aca04b07358f0afe
+```
+
+Keep that handy; each agent shows it during setup and asks you to confirm.
+
+### Adding a server
+
+On the hub:
+
+```
+$ modern-eq-chat-hub enroll server2 "Classic"
+
+Enrollment code for Classic:
+
+    Hub address:      hub.example.com:34197
+    Enrollment code:  T723-EZX2-67VF
+    Fingerprint:      1d29bcd193...
+```
+
+Then on the game server, run `modern-eq-chat-agent`. It asks for the hub address and
+that code, shows the fingerprint it received, and asks you to confirm it
+matches what the hub printed. Once confirmed it receives its permanent
+credentials, writes its config, and is ready to run.
+
+The code is single use and expires in 15 minutes. The hub must be running for
+an agent to enroll.
+
+Other hub commands:
+
+```
+modern-eq-chat-hub status                  # configured servers and when they last connected
+modern-eq-chat-hub web password            # set up the local management interface
+modern-eq-chat-hub enroll list             # outstanding codes
+modern-eq-chat-hub enroll revoke <id>      # cancel a code
+modern-eq-chat-hub agent list              # authorized servers
+modern-eq-chat-hub agent rotate server2    # new token, invalidates the old one
+modern-eq-chat-hub agent disable server2   # temporarily block
+modern-eq-chat-hub agent remove server2    # revoke
+```
+
+For scripted installs, `modern-eq-chat-hub agent add <key> [name]` prints a join code
+that can be dropped into a provisioning template instead, skipping the
+interactive enrollment.
+
+### Message patterns
+
+Relay patterns render with these variables:
+
+Variable|Meaning
+---|---
+`{{.Name}}`|Who sent the message
+`{{.Message}}`|The message body
+`{{.OriginName}}`|Display name of the server it came from, e.g. `Vanilla`
+`{{.Origin}}`|Routing key of that server, e.g. `server1`
+`{{.Channel}}`|Logical channel, e.g. `ooc`
+
+Each destination renders its own wording, so Discord formatting and in-game
+wording stay independent. The hub side is `discord_pattern` under
+`[[relay.hub.channels]]`; the agent side is `inbound_pattern` under
+`[[relay.agent.channels]]`.
+
+### Security
+
+* **Per-agent tokens.** Each server gets its own, so one can be revoked without
+  re-keying the others. The hub stores argon2id hashes only, so a leaked
+  `modern-eq-chat-agents.json` grants nothing.
+* **Identity follows the token.** The hub stamps the originating server from
+  whichever token authenticated, ignoring whatever name the agent claims. An
+  agent cannot post as another server.
+* **Enrollment codes** are single use, expire in 15 minutes, and burn after a
+  handful of failed attempts. The durable token is never typed by a human.
+* **Certificate pinning.** The hub generates a self-signed certificate on first
+  run and each agent pins its fingerprint after you confirm it. Against an
+  attacker who can obtain a certificate from any public CA, a pin is stronger
+  than normal chain verification. If your hub has a real certificate, set
+  `tls_mode = "file"` and leave the fingerprint empty.
+* **Command injection.** Relayed names and messages are stripped of line breaks
+  and control characters before they can reach a telnet console, and every
+  outgoing line is re-checked immediately before it is written.
+
+`tls_mode = "none"` exists for hubs reachable only over a private network such
+as WireGuard. It sends tokens in the clear; the setup wizard asks twice before
+accepting it.
+
+### Hardening
+
+The hub is the only internet-facing part of a relay, so it assumes hostile
+traffic. Defaults are in `[relay.hub.limits]`:
+
+Setting|Default|What it does
+---|---|---
+`max_agents`|64|Caps concurrent servers
+`connections_per_minute`|30|Per source address; excess gets HTTP 429 with `Retry-After`
+`auth_failures_before_ban`|5|Bad tokens or codes from one address before it is blocked
+`ban_duration`|15m|First block. Repeat offenders double, up to a day
+`messages_per_second`|20|Sustained chat rate per agent
+`message_burst`|40|Messages one agent may send at once
+`allowed_networks`|(empty)|Optional. Restrict to addresses or CIDRs
+
+Set any numeric limit to `-1` to disable it deliberately; `0` means "unset" and
+picks up the default.
+
+`allowed_networks` accepts both forms, e.g.
+`["203.0.113.4", "10.0.0.0/8"]`. A malformed entry stops the hub starting
+rather than silently allowing everyone — a typo that widened the allowlist to
+the internet would be the worst possible failure.
+
+Blocks are held in memory and cleared by restarting the hub.
+
+### Choosing a port
+
+The default is 34197. An unusual port is **not** a security measure — scanners
+sweep every port continuously. It only avoids a number people probe by habit.
+What protects the hub is the token authentication, TLS, and the limits above.
+
+Ports above 49152 are deliberately avoided: that range is what the OS hands out
+for outbound connections, and binding a service there can collide with it.
+
+### Running as a service
+
+Both programs install themselves on Windows and Linux:
+
+```
+modern-eq-chat-hub service install     # or modern-eq-chat-agent service install
+modern-eq-chat-hub service start
+modern-eq-chat-hub service status
+modern-eq-chat-hub service stop
+modern-eq-chat-hub service uninstall
+```
+
+Installing needs `sudo` on Linux and "Run as administrator" on Windows; the
+commands say so if you forget.
+
+**Linux** writes a systemd unit to `/etc/systemd/system/`. It restarts on
+failure, waits for real network connectivity at boot, and is sandboxed with
+`ProtectSystem=strict`, `PrivateTmp`, `NoNewPrivileges` and a restricted set of
+address families. Only the working directory is writable.
+
+If `systemctl` exists but systemd is not PID 1 — a container, or WSL1 — the
+install refuses with an explanation instead of half-writing a unit file. Use
+your container runtime's restart policy there.
+
+**Windows** registers with the Service Control Manager, starts automatically,
+and restarts on failure. Because Windows starts services in
+`C:\Windows\System32` with no way to configure otherwise, the binary changes
+to its own directory at startup; `modern-eq-chat.conf`, the certificate, the roster and
+the log all live beside the executable.
+
+**macOS and BSD** have no service integration. The relay runs fine; set up
+launchd or rc.d yourself.
+
+### Firewall
+
+Only the hub needs an open port. Agents dial out.
+
+```
+modern-eq-chat-hub firewall            # show the command for this machine
+modern-eq-chat-hub firewall --apply    # run it
+```
+
+It detects `netsh` on Windows and `ufw` or `firewalld` on Linux, and prints
+manual guidance when it finds neither. Setup shows the command but never runs
+it — changing a firewall should not be a side effect of answering questions. If
+the box sits behind a router or a cloud security group, that rule matters too.
+
+### Management interface
+
+The hub can serve a local web interface for day-to-day management:
+
+```
+modern-eq-chat-hub web password    # set the admin password and enable it
+modern-eq-chat-hub web status
+modern-eq-chat-hub web disable
+```
+
+It shows connected servers with live player counts and health, and lets you
+rename servers, enable, disable or remove them, generate enrollment codes, and
+edit channel routing. Channel changes apply to the running hub immediately and
+are written to `modern-eq-chat.conf`, so they survive a restart. Changing the Discord
+bot token still needs one.
+
+**Test** on a server sends a probe and reports the round trip, whether that
+agent can actually reach its game server, and optionally injects a visible line
+in game. That distinguishes three cases a connection indicator cannot: server
+offline, relay up but game server down, and everything working.
+
+#### Reaching it
+
+It binds to `127.0.0.1:34198` and is meant to stay there. From another machine,
+tunnel to it:
+
+```
+ssh -L 34198:127.0.0.1:34198 you@hub
+```
+
+then open `http://127.0.0.1:34198`.
+
+This is deliberate. The interface edits `inbound_pattern`, which becomes a
+telnet command on every connected game server — that makes it a privileged
+console, not a settings page. Binding it to a public address would put remote
+code execution on your servers behind one password. The hub logs a warning if
+you point `listen` at a non-loopback address anyway.
+
+Other protections: argon2id password hash (the password itself is never
+written to `modern-eq-chat.conf`), session cookies that are `HttpOnly` and
+`SameSite=Strict`, a CSRF token on every mutating request, rate-limited logins
+with the same escalating block the relay port uses, and a strict content
+security policy. The whole UI is embedded in the binary, so nothing loads from
+a CDN and there is no path from a URL to the real filesystem.
+
+### Loop prevention
+
+A relayed message injected into a game server echoes back on that server's own
+telnet feed, where it would otherwise look like fresh chat. Three guards stop
+this:
+
+1. The hub never sends an event back to the server it came from.
+2. Each agent remembers what it just injected and suppresses the echo.
+3. Every relay increments a hop counter; the hub rejects anything already
+   relayed, as well as any event ID it has recently seen.
+
+### Scale
+
+The hub encodes each message once and fans it out through a bounded per-agent
+queue. A slow or wedged server sheds its own backlog without blocking the hub
+or any other server, so adding the tenth server costs the same as the second.
+
+Agents reconnect on their own with exponential backoff, and report player
+counts upward so the Discord bot status shows a total across every server.
 
 ### Configure discord users to talk from Discord to EQ
 
@@ -42,33 +399,33 @@ TalkEQ bridges links between everquest and other services. Extends [DiscordEQ](h
 
 #### Using Users Database
 
-* When talkeq runs, a users.txt file is generated the same directory as talkeq. Peek at the file to see the layout.
-* If you write to this file, talkeq will hot reload the contents and update it's lookup table in memory for mapping users from discord to telnet (eq)
-* You can write a website to edit this file, or by hand, to update talkeq and sync your player IGN tags
+* When modern-eq-chat runs, a users.txt file is generated the same directory as modern-eq-chat. Peek at the file to see the layout.
+* If you write to this file, modern-eq-chat will hot reload the contents and update it's lookup table in memory for mapping users from discord to telnet (eq)
+* You can write a website to edit this file, or by hand, to update modern-eq-chat and sync your player IGN tags
 
 ### Troubleshooting
 
 - **I can talk from in game to discord, but messages in discord to in game fail with "message too small, ignoring, original message:"**: Double check the bot section, and toggle the Message Content Intent option. If this is disabled, the bot just sees empty content messages and fails.
 
-/etc/init.d/talkeq
+/etc/init.d/modern-eq-chat
 change APPDIR/APPBIN, user, and group to your set options
 ```sh
 !/bin/sh
 
 ### BEGIN INIT INFO
-# Provides:          talkeqdaemon
+# Provides:          modern-eq-chatdaemon
 # Required-Start:    $local_fs $network $syslog
 # Required-Stop:     $local_fs $network $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: TalkEQ
-# Description:       TalkEQ start-stop-daemon - Debian
+# Short-Description: Modern EQ Chat
+# Description:       Modern EQ Chat start-stop-daemon - Debian
 ### END INIT INFO
 
-NAME="talkeq"
+NAME="modern-eq-chat"
 PATH="/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin"
-APPDIR="/home/eqemu/talkeq/"
-APPBIN="/home/eqemu/talkeq/talkeq"
+APPDIR="/home/eqemu/modern-eq-chat/"
+APPBIN="/home/eqemu/modern-eq-chat/modern-eq-chat"
 APPARGS=""
 USER="eqemu"
 GROUP="eqemu"
@@ -79,7 +436,7 @@ set -e
 
 start() {
   printf "Starting '$NAME'... "
-  start-stop-daemon --start --chuid "$USER:$GROUP" --background --make-pidfile --pidfile /var/run/$NAME.pid --chdir "$APPDIR" --startas /bin/bash -- -c "exec $APPBIN > /var/log/talkeq.log 2>&1"
+  start-stop-daemon --start --chuid "$USER:$GROUP" --background --make-pidfile --pidfile /var/run/$NAME.pid --chdir "$APPDIR" --startas /bin/bash -- -c "exec $APPBIN > /var/log/modern-eq-chat.log 2>&1"
   printf "done\n"
 }
 #We need this function to ensure the whole process tree will be killed

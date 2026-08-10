@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xackery/talkeq/characterdb"
-	"github.com/xackery/talkeq/config"
+	"github.com/Zero-Hex/modern-eq-chat/characterdb"
+	"github.com/Zero-Hex/modern-eq-chat/config"
 	"github.com/ziutek/telnet"
 )
 

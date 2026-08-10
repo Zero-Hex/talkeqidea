@@ -2,15 +2,14 @@ package guilddb
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 	"github.com/fsnotify/fsnotify"
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/tlog"
 )
 
 var (
@@ -30,7 +29,7 @@ func New(config *config.Config) error {
 	tlog.Debugf("[guilddb] initializing")
 	_, err := os.Stat(guildsDatabasePath)
 	if os.IsNotExist(err) {
-		err = ioutil.WriteFile(guildsDatabasePath, []byte(`# guildid:channelid #comment`), 0644)
+		err = os.WriteFile(guildsDatabasePath, []byte(`# guildid:channelid #comment`), 0644)
 		if err != nil {
 			return fmt.Errorf("guilds database create %w", err)
 		}
@@ -90,7 +89,7 @@ func loop(watcher *fsnotify.Watcher) {
 func reload() error {
 	mu.Lock()
 	defer mu.Unlock()
-	data, err := ioutil.ReadFile(guildsDatabasePath)
+	data, err := os.ReadFile(guildsDatabasePath)
 	if err != nil {
 		return fmt.Errorf("readFile: %w", err)
 	}

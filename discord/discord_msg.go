@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Zero-Hex/modern-eq-chat/guilddb"
+	"github.com/Zero-Hex/modern-eq-chat/request"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/userdb"
 	"github.com/bwmarrin/discordgo"
-	"github.com/xackery/talkeq/guilddb"
-	"github.com/xackery/talkeq/request"
-	"github.com/xackery/talkeq/tlog"
-	"github.com/xackery/talkeq/userdb"
 )
 
 func (t *Discord) handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -75,7 +75,7 @@ func (t *Discord) handleMessage(s *discordgo.Session, m *discordgo.MessageCreate
 			if err != nil {
 				tlog.Warnf("[discord->subscriber %d] request failed: %s", i, err)
 			}
-			tlog.Infof("[discord->subscriber %d] from %s: %s", m.Author.Username, msg)
+			tlog.Infof("[discord->subscriber %d] from %s: %s", i, m.Author.Username, msg)
 		}
 	}
 
@@ -120,6 +120,31 @@ func (t *Discord) handleMessage(s *discordgo.Session, m *discordgo.MessageCreate
 			continue
 		}
 		if isUnregisteredIGN && !route.IsAnyoneAllowed {
+			continue
+		}
+
+		// Relay routes publish structured fields; the hub decides which
+		// servers see it and each one renders its own wording.
+		if route.Target == "relay" {
+			channel := route.Channel
+			if channel == "" {
+				channel = route.ChannelID
+			}
+			req := request.RelayPublish{
+				Ctx:     ctx,
+				Source:  request.RelaySourceDiscord,
+				Channel: channel,
+				Name:    ign,
+				Message: msg,
+			}
+			routes++
+			for i, s := range t.subscribers {
+				if err := s(req); err != nil {
+					tlog.Warnf("[discord->relay subscriber %d] channel %s failed: %s", i, req.Channel, err)
+					continue
+				}
+				tlog.Infof("[discord->relay] channel %s: %s: %s", req.Channel, ign, msg)
+			}
 			continue
 		}
 

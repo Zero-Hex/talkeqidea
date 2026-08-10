@@ -20,7 +20,8 @@ type Discord struct {
 type DiscordRoute struct {
 	IsEnabled              bool           `toml:"enabled" desc:"Is route enabled?"`
 	Trigger                DiscordTrigger `toml:"discord_trigger" desc:"condition to trigger route"`
-	Target                 string         `toml:"target" desc:"target service, examples: telnet, discord"`
+	Target                 string         `toml:"target" desc:"target service: telnet, discord, or relay (send to the hub for cross-server chat)"`
+	Channel                string         `toml:"channel,omitempty" desc:"Logical relay channel name when target = \"relay\", e.g. ooc. Defaults to channel_id"`
 	ChannelID              string         `toml:"channel_id" desc:"Destination channel ID, For telnet->ooc, set to 260. More values have MT_ prefix in this link: https://docs.eqemu.io/server/operation/chat-channel-types/"`
 	GuildID                string         `toml:"guild_id,omitempty" desc:"Optional, and likely not needed to be set since guilddb file is better, destination guild ID to relay the discord message to"`
 	MessagePattern         string         `toml:"message_pattern" desc:"Destination message in. E.g. {{.Name}} says {{.ChannelName}}, '{{.Message}}"`

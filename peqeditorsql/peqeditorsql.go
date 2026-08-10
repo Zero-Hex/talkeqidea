@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xackery/talkeq/request"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/request"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 
-	"github.com/hpcloud/tail"
-	"github.com/xackery/talkeq/config"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/nxadm/tail"
 )
 
 const (
@@ -197,10 +197,10 @@ func (t *PEQEditorSQL) handleMessage(ctx context.Context, line string) {
 
 		name := ""
 		message := ""
-		if route.Trigger.MessageIndex > 0 && route.Trigger.MessageIndex <= len(matches[0]) {
+		if route.Trigger.MessageIndex > 0 && route.Trigger.MessageIndex < len(matches[0]) {
 			message = matches[0][route.Trigger.MessageIndex]
 		}
-		if route.Trigger.NameIndex > 0 && route.Trigger.NameIndex <= len(matches[0]) {
+		if route.Trigger.NameIndex > 0 && route.Trigger.NameIndex < len(matches[0]) {
 			name = matches[0][route.Trigger.NameIndex]
 		}
 
@@ -225,7 +225,7 @@ func (t *PEQEditorSQL) handleMessage(ctx context.Context, line string) {
 			for i, s := range t.subscribers {
 				err = s(req)
 				if err != nil {
-					tlog.Warnf("[peqeditorsql->discord subscriber %d] channel %s message %s failed: %s", i, route.ChannelID, req.Message)
+					tlog.Warnf("[peqeditorsql->discord subscriber %d] channel %s message %s failed: %s", i, route.ChannelID, req.Message, err)
 					continue
 				}
 				tlog.Infof("[peqeditorsql->discord subscribe %d] channel %s message: %s", i, route.ChannelID, req.Message)

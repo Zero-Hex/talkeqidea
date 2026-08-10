@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/xackery/talkeq/registerdb"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/registerdb"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 )
 
 func (t *API) relays(w http.ResponseWriter, r *http.Request) {

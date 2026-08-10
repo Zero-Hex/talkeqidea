@@ -7,15 +7,35 @@ import (
 	"os/signal"
 	"runtime"
 
-	"github.com/xackery/talkeq/client"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/client"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 )
 
 // Version is the build version
 var Version string
 
 func main() {
-	w, err := os.Create("talkeq.log")
+	// Relay administration lives in modern-eq-chat-hub. This binary is the original
+	// single-server modern-eq-chat and stays that way.
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "agent", "enroll", "setup":
+			fmt.Printf("%q is a relay command. Use modern-eq-chat-hub or modern-eq-chat-agent instead.\n", os.Args[1])
+			fmt.Println("This binary runs the original single-server modern-eq-chat.")
+			os.Exit(1)
+		}
+	}
+
+	if actions, err := config.Migrate(config.DefaultPath); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not migrate files from the previous name: %s\n", err)
+	} else {
+		for _, action := range actions {
+			fmt.Printf("migrated: %s\n", action)
+		}
+	}
+
+	w, err := os.Create("modern-eq-chat.log")
 	if err != nil {
 		fmt.Println(err)
 		if runtime.GOOS == "windows" {
@@ -49,7 +69,7 @@ func run(w *os.File) (err error) {
 	if Version == "" {
 		Version = "1.x.x EXPERIMENTAL"
 	}
-	tlog.Infof("starting talkeq %s", Version)
+	tlog.Infof("starting modern-eq-chat %s", Version)
 	wd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("getwd: %w", err)

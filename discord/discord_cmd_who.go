@@ -3,9 +3,9 @@ package discord
 import (
 	"fmt"
 
+	"github.com/Zero-Hex/modern-eq-chat/characterdb"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 	"github.com/bwmarrin/discordgo"
-	"github.com/xackery/talkeq/characterdb"
-	"github.com/xackery/talkeq/tlog"
 )
 
 func (t *Discord) whoRegister() error {

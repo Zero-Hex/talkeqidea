@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modern EQEMU to Discord Chat</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<div id="login" class="login">
+  <form id="login-form" class="card">
+    <h1>Modern EQ Chat Hub</h1>
+    <p class="muted">Local management interface</p>
+    <label for="password">Admin password</label>
+    <input type="password" id="password" autocomplete="current-password" autofocus>
+    <button type="submit">Sign in</button>
+    <p id="login-error" class="error" hidden></p>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <h1>Modern EQ Chat Hub</h1>
+    <div class="header-actions">
+      <button id="refresh" class="secondary">Refresh</button>
+      <button id="logout" class="secondary">Sign out</button>
+    </div>
+  </header>
+
+  <section class="stats" id="stats"></section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Servers</h2>
+      <button id="test-all">Test all</button>
+    </div>
+    <div id="agents"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Add a server</h2>
+    </div>
+    <form id="enroll-form" class="row">
+      <input type="text" id="enroll-key" placeholder="Routing key, e.g. server2" required>
+      <input type="text" id="enroll-name" placeholder="Display name, e.g. Classic">
+      <button type="submit">Generate code</button>
+    </form>
+    <div id="enroll-result"></div>
+    <div id="enroll-pending"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Channels</h2>
+      <button id="save-channels">Save channels</button>
+    </div>
+    <p class="muted">
+      Changes apply to the running hub immediately and are written to
+      modern-eq-chat.conf. Patterns accept
+      <code>{{.Name}}</code>, <code>{{.Message}}</code>,
+      <code>{{.OriginName}}</code>, <code>{{.Origin}}</code> and
+      <code>{{.Channel}}</code>.
+    </p>
+    <div id="channels"></div>
+  </section>
+
+  <p id="toast" class="toast" hidden></p>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

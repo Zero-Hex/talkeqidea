@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/xackery/talkeq/guilddb"
-	"github.com/xackery/talkeq/request"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/guilddb"
+	"github.com/Zero-Hex/modern-eq-chat/request"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 )
 
 var (
@@ -98,17 +98,19 @@ func (t *Telnet) parseMessage(msg string) bool {
 
 		name := ""
 		message := ""
-		if route.Trigger.MessageIndex > len(matches[0]) {
-			tlog.Warnf("[telnet] route %d trigger message_index %d greater than matches %d", routeIndex, route.Trigger.MessageIndex, len(matches[0]))
+		// A valid submatch index is < len(matches[0]); == len would panic.
+		if route.Trigger.MessageIndex >= len(matches[0]) {
+			tlog.Warnf("[telnet] route %d message_index %d is out of range for %d submatches", routeIndex, route.Trigger.MessageIndex, len(matches[0]))
 			continue
 		}
 		message = matches[0][route.Trigger.MessageIndex]
-		if route.Trigger.NameIndex > len(matches[0]) {
-			tlog.Warnf("[telnet route %d name_index %d greater than matches %d", routeIndex, route.Trigger.MessageIndex, len(matches[0]))
+
+		if route.Trigger.NameIndex >= len(matches[0]) {
+			tlog.Warnf("[telnet] route %d name_index %d is out of range for %d submatches", routeIndex, route.Trigger.NameIndex, len(matches[0]))
 			continue
 		}
 		name = matches[0][route.Trigger.NameIndex]
-		if route.Trigger.GuildIndex > 0 && route.Trigger.GuildIndex <= len(matches[0]) {
+		if route.Trigger.GuildIndex > 0 && route.Trigger.GuildIndex < len(matches[0]) {
 			route.GuildID = matches[0][route.Trigger.GuildIndex]
 			iGuildID, err := strconv.Atoi(route.GuildID)
 			if err != nil {
@@ -120,10 +122,31 @@ func (t *Telnet) parseMessage(msg string) bool {
 				if route.ChannelID == "INSERTGLOBALGUILDCHANNELHERE" {
 					continue //in cases a guild route happened and default settings, no need to attempt the route
 				}
-				tlog.Debugf("[telnet] route %d guild_index %d is not in talkeq_guilds, falling back to discord channel %s", routeIndex, iGuildID, route.ChannelID)
+				tlog.Debugf("[telnet] route %d guild_index %d is not in modern-eq-chat-guilds.txt, falling back to discord channel %s", routeIndex, iGuildID, route.ChannelID)
 			} else {
 				route.ChannelID = tmpChannelID
 			}
+		}
+
+		// The relay carries structured fields, not rendered text: the hub and
+		// each destination server format it themselves. Handled before the
+		// profile-URL decoration below, which is Discord markdown and has no
+		// business going in-game on another server.
+		if route.Target == "relay" {
+			req := request.RelayPublish{
+				Ctx:     context.Background(),
+				Source:  request.RelaySourceTelnet,
+				Channel: route.RelayChannel(),
+				Name:    name,
+				Message: message,
+			}
+			for i, s := range t.subscribers {
+				if err = s(req); err != nil {
+					tlog.Warnf("[telnet->relay subscriber %d] channel %s failed: %s", i, req.Channel, err)
+					continue
+				}
+			}
+			continue
 		}
 
 		buf := new(bytes.Buffer)

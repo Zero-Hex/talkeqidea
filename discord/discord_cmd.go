@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 	"github.com/bwmarrin/discordgo"
-	"github.com/xackery/talkeq/tlog"
 )
 
 func (t *Discord) handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate) {

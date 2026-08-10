@@ -7,10 +7,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 	"github.com/fsnotify/fsnotify"
 	"github.com/jbsmith7741/toml"
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/tlog"
 )
 
 var (

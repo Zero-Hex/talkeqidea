@@ -8,19 +8,20 @@ import (
 	"sort"
 	"time"
 
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 	"github.com/jbsmith7741/toml"
-	"github.com/rs/zerolog"
 )
 
 // Config represents a configuration parse
 type Config struct {
-	Debug                         bool      `toml:"debug" desc:"TalkEQ Configuration\n\n# Debug messages are displayed. This will cause console to be more verbose, but also more informative"`
+	Debug                         bool      `toml:"debug" desc:"Modern EQ Chat Configuration\n\n# Debug messages are displayed. This will cause console to be more verbose, but also more informative"`
 	IsKeepAliveEnabled            bool      `toml:"keep_alive" desc:"Keep all connections alive?\n# If false, endpoint disconnects will not self repair\n# Not recommended to turn off except in advanced cases"`
 	KeepAliveRetry                string    `toml:"keep_alive_retry" desc:"How long before retrying to connect (requires keep_alive = true)\n# default: 10s"`
-	IsFallbackGuildChannelEnabled bool      `toml:"is_fallback_guild_channel_enabled" desc:"If a guild chat occurs and it isn't mapped inside talkeq_guilds, chat is echod to the globalguild channel route channelid"`
-	UsersDatabasePath             string    `toml:"users_database" desc:"Users by ID are mapped to their display names via the raw text file called users database\n# If users database file does not exist, a new one is created\n# This file is actively monitored. if you edit it while talkeq is running, it will reload the changes instantly\n# This file overrides the IGN: playerName role tags in discord\n# If a user is not found on this list, it will fall back to check for IGN tags"`
-	GuildsDatabasePath            string    `toml:"guilds_database" desc:"Guilds by ID are mapped to their database ID via the raw text file called guilds database\n# If guilds database file does not exist, a new one is created\n# This file is actively monitored. if you edit it while talkeq is running, it will reload the changes instantly"`
-	API                           API       `toml:"api" desc:"NOT YET SUPPORTED, can be ignored for now (it's fine to keep enabled): API is a service to allow external tools to talk to TalkEQ via HTTP requests.\n# It uses Restful style (JSON) with a /api suffix for all endpoints"`
+	IsFallbackGuildChannelEnabled bool      `toml:"is_fallback_guild_channel_enabled" desc:"If a guild chat occurs and it isn't mapped inside modern-eq-chat-guilds.txt, chat is echod to the globalguild channel route channelid"`
+	UsersDatabasePath             string    `toml:"users_database" desc:"Users by ID are mapped to their display names via the raw text file called users database\n# If users database file does not exist, a new one is created\n# This file is actively monitored. if you edit it while modern-eq-chat is running, it will reload the changes instantly\n# This file overrides the IGN: playerName role tags in discord\n# If a user is not found on this list, it will fall back to check for IGN tags"`
+	GuildsDatabasePath            string    `toml:"guilds_database" desc:"Guilds by ID are mapped to their database ID via the raw text file called guilds database\n# If guilds database file does not exist, a new one is created\n# This file is actively monitored. if you edit it while modern-eq-chat is running, it will reload the changes instantly"`
+	Relay                         Relay     `toml:"relay" desc:"Cross-server chat. Leave mode = \"standalone\" for the original single-server behavior.\n# Set mode = \"hub\" on the box that holds the Discord bot, and mode = \"agent\" on every game server that reports to it"`
+	API                           API       `toml:"api" desc:"NOT YET SUPPORTED, can be ignored for now (it's fine to keep enabled): API is a service to allow external tools to talk to Modern EQ Chat via HTTP requests.\n# It uses Restful style (JSON) with a /api suffix for all endpoints"`
 	Discord                       Discord   `toml:"discord" desc:"Discord is a chat service that you can listen and relay EQ chat with"`
 	Telnet                        Telnet    `toml:"telnet" desc:"Telnet is a service eqemu/server can use, that relays messages over"`
 	EQLog                         EQLog     `toml:"eqlog" desc:"EQ Log is used to parse everquest client logs. Primarily for live EQ, non server owners"`
@@ -41,7 +42,7 @@ type Trigger struct {
 func NewConfig(ctx context.Context) (*Config, error) {
 	var f *os.File
 	cfg := Config{}
-	path := "talkeq.conf"
+	path := "modern-eq-chat.conf"
 
 	isNewConfig := false
 	fi, err := os.Stat(path)
@@ -51,7 +52,7 @@ func NewConfig(ctx context.Context) (*Config, error) {
 		}
 		f, err = os.Create(path)
 		if err != nil {
-			return nil, fmt.Errorf("create talkeq.conf: %w", err)
+			return nil, fmt.Errorf("create modern-eq-chat.conf: %w", err)
 		}
 		fi, err = os.Stat(path)
 		if err != nil {
@@ -68,14 +69,14 @@ func NewConfig(ctx context.Context) (*Config, error) {
 
 	defer f.Close()
 	if fi.IsDir() {
-		return nil, fmt.Errorf("talkeq.conf is a directory, should be a file")
+		return nil, fmt.Errorf("modern-eq-chat.conf is a directory, should be a file")
 	}
 
 	if isNewConfig {
 		enc := toml.NewEncoder(f)
 		enc.Encode(getDefaultConfig())
 
-		fmt.Println("a new talkeq.conf file was created. Please open this file and configure talkeq, then run it again.")
+		fmt.Println("a new modern-eq-chat.conf file was created. Please open this file and configure modern-eq-chat, then run it again.")
 		if runtime.GOOS == "windows" {
 			option := ""
 			fmt.Println("press a key then enter to exit.")
@@ -86,12 +87,12 @@ func NewConfig(ctx context.Context) (*Config, error) {
 
 	_, err = toml.DecodeReader(f, &cfg)
 	if err != nil {
-		return nil, fmt.Errorf("decode talkeq.conf: %w", err)
+		return nil, fmt.Errorf("decode modern-eq-chat.conf: %w", err)
 	}
 
-	/*fw, err := os.Create("talkeq2.toml")
+	/*fw, err := os.Create("modern-eq-chat2.toml")
 	if err != nil {
-		return nil, fmt.Errorf("talkeq: %w", err)
+		return nil, fmt.Errorf("modern-eq-chat: %w", err)
 	}
 	defer fw.Close()
 
@@ -101,10 +102,7 @@ func NewConfig(ctx context.Context) (*Config, error) {
 		return nil, fmt.Errorf("encode: %w", err)
 	}*/
 
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	if cfg.Debug {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	}
+	tlog.SetDebug(cfg.Debug)
 	sort.SliceStable(cfg.SQLReport.Entries, func(i, j int) bool {
 		return cfg.SQLReport.Entries[i].Index > cfg.SQLReport.Entries[j].Index
 	})
@@ -121,7 +119,7 @@ func NewConfig(ctx context.Context) (*Config, error) {
 func (c *Config) Verify() error {
 
 	if c.UsersDatabasePath == "" {
-		c.UsersDatabasePath = "talkeq_users.txt"
+		c.UsersDatabasePath = "modern-eq-chat-users.txt"
 	}
 
 	if c.GuildsDatabasePath == "" {
@@ -132,6 +130,9 @@ func (c *Config) Verify() error {
 		c.KeepAliveRetry = "30s"
 	}
 
+	if err := c.Relay.Verify(); err != nil {
+		return fmt.Errorf("relay: %w", err)
+	}
 	if err := c.API.Verify(); err != nil {
 		return fmt.Errorf("api: %w", err)
 	}
@@ -171,13 +172,55 @@ func getDefaultConfig() Config {
 		Debug:              true,
 		IsKeepAliveEnabled: true,
 		KeepAliveRetry:     "10s",
-		UsersDatabasePath:  "talkeq_users.txt",
-		GuildsDatabasePath: "talkeq_guilds.txt",
+		UsersDatabasePath:  "modern-eq-chat-users.txt",
+		GuildsDatabasePath: "modern-eq-chat-guilds.txt",
 	}
+	// Relay defaults to standalone, which is exactly how modern-eq-chat behaved before
+	// cross-server chat existed. The hub and agent sections are filled in with
+	// working examples so an operator switching mode has something to edit
+	// rather than something to invent.
+	cfg.Relay.Mode = ModeStandalone
+
+	cfg.Relay.Hub.Listen = ":34197"
+	cfg.Relay.Hub.AgentsDatabase = "modern-eq-chat-agents.json"
+	cfg.Relay.Hub.EnrollDatabase = "modern-eq-chat-enroll.json"
+	cfg.Relay.Hub.TLSMode = TLSSelfSigned
+	cfg.Relay.Hub.TLSCertPath = "modern-eq-chat-cert.pem"
+	cfg.Relay.Hub.TLSKeyPath = "modern-eq-chat-key.pem"
+	cfg.Relay.Hub.HeartbeatSecs = 30
+	cfg.Relay.Hub.QueueSize = 256
+	cfg.Relay.Hub.Web = WebConfig{
+		IsEnabled: false,
+		Listen:    "127.0.0.1:34198",
+	}
+	cfg.Relay.Hub.Limits = HubLimits{
+		MaxAgents:             64,
+		ConnectionsPerMinute:  30,
+		AuthFailuresBeforeBan: 5,
+		BanDuration:           "15m",
+		MessagesPerSecond:     20,
+		MessageBurst:          40,
+	}
+	cfg.Relay.Hub.Channels = append(cfg.Relay.Hub.Channels, HubChannel{
+		Name:             "ooc",
+		IsEnabled:        true,
+		IsCrossServer:    true,
+		DiscordChannelID: "INSERTOOCCHANNELHERE",
+		DiscordPattern:   "**[{{.OriginName}}]** {{.Name}} **OOC**: {{.Message}}",
+	})
+
+	cfg.Relay.Agent.ServerKey = "server1"
+	cfg.Relay.Agent.ShortName = "Server One"
+	cfg.Relay.Agent.Channels = append(cfg.Relay.Agent.Channels, AgentChannel{
+		Name:           "ooc",
+		IsEnabled:      true,
+		InboundPattern: "emote world 260 {{.Name}} says from {{.OriginName}}, '{{.Message}}'",
+	})
+
 	cfg.API.IsEnabled = true
 	cfg.API.Host = ":9933"
 	cfg.API.APIRegister.IsEnabled = true
-	cfg.API.APIRegister.RegistrationDatabasePath = "talkeq_register.toml"
+	cfg.API.APIRegister.RegistrationDatabasePath = "modern-eq-chat-register.toml"
 
 	cfg.Discord.IsEnabled = true
 	cfg.Discord.BotStatus = "EQ: {{.PlayerCount}} Online"
