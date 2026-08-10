@@ -100,12 +100,35 @@ func (t *Discord) Connect(ctx context.Context) error {
 		return fmt.Errorf("new: %w", err)
 	}
 
+	// Ask for exactly the gateway intents TalkEQ uses.
+	//
+	// discordgo defaults to IntentsAllWithoutPrivileged, which does NOT include
+	// message content. Since Discord's September 2022 change a bot that does
+	// not request that intent receives an empty Content on every channel
+	// message, so relaying from Discord into the game silently does nothing.
+	// Enabling the toggle in the developer portal is necessary but not
+	// sufficient - the intent has to be requested here too.
+	//
+	// Guild member lookups for IGN roles go through the REST API rather than
+	// the gateway, so the privileged members intent is deliberately not
+	// requested.
+	t.conn.Identify.Intents = discordgo.IntentGuilds |
+		discordgo.IntentGuildMessages |
+		discordgo.IntentMessageContent
+
 	t.conn.StateEnabled = true
 	t.conn.AddHandler(t.handleMessage)
 	t.conn.AddHandler(t.handleCommand)
 
 	err = t.conn.Open()
 	if err != nil {
+		// Discord closes the connection with "disallowed intents" when the
+		// portal toggle is off. That error text is opaque, so point at the fix.
+		if strings.Contains(strings.ToLower(err.Error()), "disallowed intent") {
+			return fmt.Errorf("discord rejected the message content intent: turn on "+
+				"'Message Content Intent' at https://discord.com/developers/ under your "+
+				"application's Bot page, then start talkeq again (%w)", err)
+		}
 		return fmt.Errorf("open: %w", err)
 	}
 

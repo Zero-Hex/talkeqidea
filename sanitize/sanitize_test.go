@@ -39,8 +39,8 @@ func TestTelnetLineNeverEmitsLineBreak(t *testing.T) {
 		"\n", "\r", "\r\n", "a\nb\nc",
 		"emote world 260 x\nquit",
 		"\n\n\n\n",
-		"unicode   line separator",
-		" next line",
+		"unicode \u2028 line separator",
+		"\u0085 next line",
 	}
 	for _, in := range inputs {
 		got := TelnetLine(in, MaxMessageLen)

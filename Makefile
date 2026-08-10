@@ -1,27 +1,63 @@
 VERSION ?= v1.3.14
 NAME := talkeq
 
-# run a copy of talkeq
-run: sanitize
-	@echo "run: building"
-	mkdir -p bin
-	cd bin && go run ../main.go
+# Every target here is a command, not a file. Without this, a target sharing a
+# name with a directory in the repo is silently treated as already built - which
+# is exactly what happened when the sanitize package was added and quietly
+# disabled the sanitize target.
+.PHONY: run run-hub run-agent sanitize lint test test-race build-all build-prepare \
+	build-linux build-darwin build-windows build-linux-arm analyze coverage \
+	profile-heap profile-trace
 
-# clean up and check for errors
-sanitize:
-	@echo "sanitize: checking for errors"
-	rm -rf vendor/
-	go vet -tags ci ./...
-	test -z $(goimports -e -d . | tee /dev/stderr)
-	gocyclo -over 30 .
-	golint -set_exit_status $(go list -tags ci ./...)
-	staticcheck -go 1.14 ./...
-	go test -tags ci -covermode=atomic -coverprofile=coverage.out ./...
-    coverage=`go tool cover -func coverage.out | grep total | tr -s '\t' | cut -f 3 | grep -o '[^%]*'`
+# run a copy of talkeq
+run:
+	@echo "run: building"
+	@mkdir -p bin
+	cd bin && go run ..
+
+# run the relay hub
+run-hub:
+	@mkdir -p bin
+	cd bin && go run ../cmd/talkeq-hub
+
+# run a relay agent
+run-agent:
+	@mkdir -p bin
+	cd bin && go run ../cmd/talkeq-agent
+
+# vet and test, the checks that need no extra tooling
+sanitize: lint test-race
+
+# static analysis. staticcheck and goimports are optional so a contributor
+# without them can still build and test; golint and gocyclo are gone because
+# golint was archived in 2021 and staticcheck covers the same ground.
+# The vet invocation names tlog's printf-style wrappers. vet cannot see into
+# them otherwise, which is exactly why several format-string bugs survived in
+# this codebase for so long.
+lint:
+	@echo "lint: go vet"
+	@go vet -printf.funcs=Debugf,Infof,Warnf,Errorf,Fatalf,Panicf ./...
+	@echo "lint: gofmt"
+	@test -z "$$(gofmt -l . | tee /dev/stderr)" || (echo "gofmt found unformatted files above" && exit 1)
+	@if command -v staticcheck >/dev/null 2>&1; then \
+		echo "lint: staticcheck"; \
+		staticcheck ./...; \
+	else \
+		echo "lint: staticcheck not installed, skipping (go install honnef.co/go/tools/cmd/staticcheck@latest)"; \
+	fi
 
 # do tests against the codebase
 test:
 	@go test -cover ./...
+
+# tests with the race detector, which is what CI runs
+test-race:
+	@go test -race ./...
+
+# test with a coverage summary
+coverage:
+	@go test -covermode=atomic -coverprofile=coverage.out ./...
+	@go tool cover -func coverage.out | grep total
 
 # talkeq is the original single-server binary. talkeq-hub and talkeq-agent are
 # the two halves of the cross-server relay.

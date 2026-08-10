@@ -75,7 +75,7 @@ func (t *Discord) handleMessage(s *discordgo.Session, m *discordgo.MessageCreate
 			if err != nil {
 				tlog.Warnf("[discord->subscriber %d] request failed: %s", i, err)
 			}
-			tlog.Infof("[discord->subscriber %d] from %s: %s", m.Author.Username, msg)
+			tlog.Infof("[discord->subscriber %d] from %s: %s", i, m.Author.Username, msg)
 		}
 	}
 

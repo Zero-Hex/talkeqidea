@@ -98,17 +98,19 @@ func (t *Telnet) parseMessage(msg string) bool {
 
 		name := ""
 		message := ""
-		if route.Trigger.MessageIndex > len(matches[0]) {
-			tlog.Warnf("[telnet] route %d trigger message_index %d greater than matches %d", routeIndex, route.Trigger.MessageIndex, len(matches[0]))
+		// A valid submatch index is < len(matches[0]); == len would panic.
+		if route.Trigger.MessageIndex >= len(matches[0]) {
+			tlog.Warnf("[telnet] route %d message_index %d is out of range for %d submatches", routeIndex, route.Trigger.MessageIndex, len(matches[0]))
 			continue
 		}
 		message = matches[0][route.Trigger.MessageIndex]
-		if route.Trigger.NameIndex > len(matches[0]) {
-			tlog.Warnf("[telnet route %d name_index %d greater than matches %d", routeIndex, route.Trigger.MessageIndex, len(matches[0]))
+
+		if route.Trigger.NameIndex >= len(matches[0]) {
+			tlog.Warnf("[telnet] route %d name_index %d is out of range for %d submatches", routeIndex, route.Trigger.NameIndex, len(matches[0]))
 			continue
 		}
 		name = matches[0][route.Trigger.NameIndex]
-		if route.Trigger.GuildIndex > 0 && route.Trigger.GuildIndex <= len(matches[0]) {
+		if route.Trigger.GuildIndex > 0 && route.Trigger.GuildIndex < len(matches[0]) {
 			route.GuildID = matches[0][route.Trigger.GuildIndex]
 			iGuildID, err := strconv.Atoi(route.GuildID)
 			if err != nil {

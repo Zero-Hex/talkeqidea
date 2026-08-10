@@ -8,7 +8,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/hpcloud/tail"
+	"github.com/nxadm/tail"
 	"github.com/xackery/talkeq/tlog"
 )
 

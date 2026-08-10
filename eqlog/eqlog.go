@@ -11,7 +11,7 @@ import (
 	"github.com/xackery/talkeq/request"
 	"github.com/xackery/talkeq/tlog"
 
-	"github.com/hpcloud/tail"
+	"github.com/nxadm/tail"
 	"github.com/xackery/talkeq/config"
 )
 
@@ -129,14 +129,19 @@ func (t *EQLog) loop(ctx context.Context) {
 				continue
 			}
 
-			name := ""
-			message := ""
+			// Submatch indices are 0-based and matches[0] holds the whole
+			// match followed by each group, so a valid index is < len.
 			if route.Trigger.MessageIndex >= len(matches[0]) {
-				message = matches[0][route.Trigger.MessageIndex]
+				tlog.Warnf("[eqlog] route %d message_index %d is out of range for %d submatches", routeIndex, route.Trigger.MessageIndex, len(matches[0]))
+				continue
 			}
+			message := matches[0][route.Trigger.MessageIndex]
+
 			if route.Trigger.NameIndex >= len(matches[0]) {
-				name = matches[0][route.Trigger.NameIndex]
+				tlog.Warnf("[eqlog] route %d name_index %d is out of range for %d submatches", routeIndex, route.Trigger.NameIndex, len(matches[0]))
+				continue
 			}
+			name := matches[0][route.Trigger.NameIndex]
 
 			buf := new(bytes.Buffer)
 			if err := route.MessagePatternTemplate().Execute(buf, struct {
@@ -156,13 +161,13 @@ func (t *EQLog) loop(ctx context.Context) {
 					ChannelID: route.ChannelID,
 					Message:   buf.String(),
 				}
-				for _, s := range t.subscribers {
+				for i, s := range t.subscribers {
 					err = s(req)
 					if err != nil {
-						tlog.Warnf("[eqlog->discord subscriber %d] discordSend channelID %s message %s failed: %s", route.ChannelID, req.Message, err)
+						tlog.Warnf("[eqlog->discord subscriber %d] channelID %s message %s failed: %s", i, route.ChannelID, req.Message, err)
 						continue
 					}
-					tlog.Infof("[eqlog->discord subscriber %d] message: %s", route.ChannelID, req.Message)
+					tlog.Infof("[eqlog->discord subscriber %d] channelID %s message: %s", i, route.ChannelID, req.Message)
 				}
 			default:
 				tlog.Warnf("[eqlog] unsupported target type: %s", route.Target)
