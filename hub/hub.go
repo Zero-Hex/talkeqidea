@@ -32,6 +32,7 @@ type Hub struct {
 	enroll   *EnrollStore
 	router   *Router
 	guard    *guard.Guard
+	tests    *pendingTests
 	sessions map[string]*Session
 
 	subscribers []func(interface{}) error
@@ -80,6 +81,7 @@ func New(ctx context.Context, cfg config.HubConfig) (*Hub, error) {
 		roster:   roster,
 		enroll:   enroll,
 		guard:    limiter,
+		tests:    newPendingTests(),
 		sessions: make(map[string]*Session),
 		ctx:      ctx,
 		cancel:   cancel,
@@ -332,7 +334,7 @@ func (h *Hub) handleAgent(w http.ResponseWriter, r *http.Request) {
 	h.guard.RecordAuthSuccess(r.RemoteAddr)
 
 	session.serverKey = entry.ServerKey
-	session.shortName = entry.ShortName
+	session.setShortName(entry.ShortName)
 	session.limiter = h.guard.NewMessageLimiter()
 
 	welcome, err := relay.NewFrame(relay.FrameWelcome, &relay.Welcome{
@@ -472,7 +474,7 @@ func (h *Hub) onFrame(s *Session, frame *relay.Frame) {
 		// The agent does not get to say who it is. Identity comes from the
 		// token that authenticated this session.
 		event.Origin = s.serverKey
-		event.OriginName = s.shortName
+		event.OriginName = s.ShortName()
 		h.Publish(event)
 
 	case relay.FrameStatus:
@@ -483,6 +485,14 @@ func (h *Hub) onFrame(s *Session, frame *relay.Frame) {
 		}
 		s.playerCount.Store(int64(status.PlayerCount))
 		s.sourceUp.Store(status.SourceUp)
+
+	case relay.FrameTestReply:
+		reply := &relay.TestReply{}
+		if err := frame.Decode(reply); err != nil {
+			tlog.Debugf("[hub] bad test reply from %s: %s", s.serverKey, err)
+			return
+		}
+		h.tests.deliver(reply)
 
 	default:
 		tlog.Debugf("[hub] ignoring %s frame from %s", frame.Type, s.serverKey)

@@ -233,6 +233,29 @@ func (r *Roster) SetEnabled(serverKey string, isEnabled bool) error {
 	return r.saveLocked()
 }
 
+// Rename changes an agent's display name without touching its token.
+func (r *Roster) Rename(serverKey, shortName string) error {
+	serverKey = sanitize.ServerKey(serverKey)
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.refreshLocked()
+
+	entry, ok := r.entries[serverKey]
+	if !ok {
+		return fmt.Errorf("agent %s not found", serverKey)
+	}
+
+	previous := entry.ShortName
+	entry.ShortName = shortName
+	if err := r.saveLocked(); err != nil {
+		entry.ShortName = previous
+		return err
+	}
+	return nil
+}
+
 // Authenticate resolves a token to the agent it belongs to.
 //
 // It deliberately ignores the server key the agent claimed and checks the

@@ -13,7 +13,11 @@ import (
 // which keeps the interesting logic — fan-out, self-exclusion, loop and
 // duplicate rejection — testable without standing up a server.
 type Router struct {
-	cfg  *config.HubConfig
+	// mu guards channels, which the web interface can replace while messages
+	// are being routed.
+	mu       sync.RWMutex
+	channels []config.HubChannel
+
 	seen *seenCache
 }
 
@@ -35,10 +39,44 @@ func (p *Plan) IsEmpty() bool {
 
 // NewRouter builds a router over hub configuration.
 func NewRouter(cfg *config.HubConfig) *Router {
-	return &Router{
-		cfg:  cfg,
-		seen: newSeenCache(30 * time.Second),
+	r := &Router{seen: newSeenCache(30 * time.Second)}
+	r.SetChannels(cfg.Channels)
+	return r
+}
+
+// SetChannels swaps the routing table. Callers verify the channels first; this
+// only takes a copy so a later edit to the caller's slice cannot mutate live
+// routing state.
+func (r *Router) SetChannels(channels []config.HubChannel) {
+	replacement := make([]config.HubChannel, len(channels))
+	copy(replacement, channels)
+
+	r.mu.Lock()
+	r.channels = replacement
+	r.mu.Unlock()
+}
+
+// Channels returns a copy of the routing table.
+func (r *Router) Channels() []config.HubChannel {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	out := make([]config.HubChannel, len(r.channels))
+	copy(out, r.channels)
+	return out
+}
+
+// channel finds a channel by name under the read lock.
+func (r *Router) channel(name string) (config.HubChannel, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, ch := range r.channels {
+		if ch.Name == name {
+			return ch, true
+		}
 	}
+	return config.HubChannel{}, false
 }
 
 // Route computes the delivery plan for an event.
@@ -60,7 +98,7 @@ func (r *Router) Route(e *relay.Event, connected []string) (*Plan, error) {
 		return nil, fmt.Errorf("event already relayed (hop %d)", e.Hop)
 	}
 
-	ch, ok := r.cfg.Channel(e.Channel)
+	ch, ok := r.channel(e.Channel)
 	if !ok {
 		return nil, fmt.Errorf("no channel named %q", e.Channel)
 	}

@@ -113,6 +113,7 @@ Other hub commands:
 
 ```
 talkeq-hub status                  # configured servers and when they last connected
+talkeq-hub web password            # set up the local management interface
 talkeq-hub enroll list             # outstanding codes
 talkeq-hub enroll revoke <id>      # cancel a code
 talkeq-hub agent list              # authorized servers
@@ -245,6 +246,51 @@ It detects `netsh` on Windows and `ufw` or `firewalld` on Linux, and prints
 manual guidance when it finds neither. Setup shows the command but never runs
 it — changing a firewall should not be a side effect of answering questions. If
 the box sits behind a router or a cloud security group, that rule matters too.
+
+### Management interface
+
+The hub can serve a local web interface for day-to-day management:
+
+```
+talkeq-hub web password    # set the admin password and enable it
+talkeq-hub web status
+talkeq-hub web disable
+```
+
+It shows connected servers with live player counts and health, and lets you
+rename servers, enable, disable or remove them, generate enrollment codes, and
+edit channel routing. Channel changes apply to the running hub immediately and
+are written to `talkeq.conf`, so they survive a restart. Changing the Discord
+bot token still needs one.
+
+**Test** on a server sends a probe and reports the round trip, whether that
+agent can actually reach its game server, and optionally injects a visible line
+in game. That distinguishes three cases a connection indicator cannot: server
+offline, relay up but game server down, and everything working.
+
+#### Reaching it
+
+It binds to `127.0.0.1:34198` and is meant to stay there. From another machine,
+tunnel to it:
+
+```
+ssh -L 34198:127.0.0.1:34198 you@hub
+```
+
+then open `http://127.0.0.1:34198`.
+
+This is deliberate. The interface edits `inbound_pattern`, which becomes a
+telnet command on every connected game server — that makes it a privileged
+console, not a settings page. Binding it to a public address would put remote
+code execution on your servers behind one password. The hub logs a warning if
+you point `listen` at a non-loopback address anyway.
+
+Other protections: argon2id password hash (the password itself is never
+written to `talkeq.conf`), session cookies that are `HttpOnly` and
+`SameSite=Strict`, a CSRF token on every mutating request, rate-limited logins
+with the same escalating block the relay port uses, and a strict content
+security policy. The whole UI is embedded in the binary, so nothing loads from
+a CDN and there is no path from a URL to the real filesystem.
 
 ### Loop prevention
 

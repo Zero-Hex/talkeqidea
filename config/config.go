@@ -189,6 +189,10 @@ func getDefaultConfig() Config {
 	cfg.Relay.Hub.TLSKeyPath = "talkeq_hub_key.pem"
 	cfg.Relay.Hub.HeartbeatSecs = 30
 	cfg.Relay.Hub.QueueSize = 256
+	cfg.Relay.Hub.Web = WebConfig{
+		IsEnabled: false,
+		Listen:    "127.0.0.1:34198",
+	}
 	cfg.Relay.Hub.Limits = HubLimits{
 		MaxAgents:             64,
 		ConnectionsPerMinute:  30,

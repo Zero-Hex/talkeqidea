@@ -27,8 +27,12 @@ const (
 // block the hub or slow down any other server, which is what lets the relay
 // scale past a handful of agents.
 type Session struct {
+	// serverKey is fixed for the life of the session.
 	serverKey string
-	shortName string
+	// shortName can change while the session is live, because the web
+	// interface can rename a server without disconnecting it. It is read on
+	// every relayed message, so it is atomic rather than mutex-guarded.
+	shortName atomic.Value // string
 
 	conn *websocket.Conn
 	out  chan *relay.Frame
@@ -47,21 +51,28 @@ type Session struct {
 }
 
 func newSession(serverKey, shortName string, conn *websocket.Conn, queueSize int) *Session {
-	return &Session{
+	s := &Session{
 		serverKey:   serverKey,
-		shortName:   shortName,
 		conn:        conn,
 		out:         make(chan *relay.Frame, queueSize),
 		done:        make(chan struct{}),
 		connectedAt: time.Now(),
 	}
+	s.setShortName(shortName)
+	return s
 }
 
 // ServerKey returns the authenticated identity of this agent.
 func (s *Session) ServerKey() string { return s.serverKey }
 
 // ShortName returns the display name for this agent's server.
-func (s *Session) ShortName() string { return s.shortName }
+func (s *Session) ShortName() string {
+	name, _ := s.shortName.Load().(string)
+	return name
+}
+
+// setShortName updates the display name on a live session.
+func (s *Session) setShortName(name string) { s.shortName.Store(name) }
 
 // PlayerCount returns the last reported online count.
 func (s *Session) PlayerCount() int { return int(s.playerCount.Load()) }
@@ -192,5 +203,5 @@ func (s *Session) sendError(code, message string) {
 }
 
 func (s *Session) String() string {
-	return fmt.Sprintf("%s (%s)", s.serverKey, s.shortName)
+	return fmt.Sprintf("%s (%s)", s.serverKey, s.ShortName())
 }

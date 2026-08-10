@@ -19,6 +19,7 @@ import (
 	"github.com/xackery/talkeq/telnet"
 	"github.com/xackery/talkeq/tlog"
 	"github.com/xackery/talkeq/userdb"
+	"github.com/xackery/talkeq/webui"
 )
 
 // Client wraps all talking endpoints
@@ -37,6 +38,7 @@ type Client struct {
 	// nil in standalone mode, where relay-targeted routes are inert.
 	hub   *hub.Hub
 	agent *agent.Agent
+	web   *webui.Server
 }
 
 // Hub returns the relay hub, or nil when not running in hub mode.
@@ -146,6 +148,13 @@ func (c *Client) newRelay(ctx context.Context) error {
 			return fmt.Errorf("hub subscribe: %w", err)
 		}
 
+		if c.config.Relay.Hub.Web.IsEnabled {
+			c.web, err = webui.New(c.config.Relay.Hub.Web, c.hub, config.DefaultPath)
+			if err != nil {
+				return fmt.Errorf("web interface: %w", err)
+			}
+		}
+
 	case config.ModeAgent:
 		c.agent, err = agent.New(ctx, c.config.Relay.Agent)
 		if err != nil {
@@ -190,6 +199,14 @@ func (c *Client) Connect(ctx context.Context) error {
 		err := c.hub.Connect(ctx)
 		if err != nil {
 			return fmt.Errorf("hub connect: %w", err)
+		}
+	}
+	if c.web != nil {
+		if err := c.web.Connect(ctx); err != nil {
+			// The relay itself is unaffected by a web interface that cannot
+			// bind, so this is a warning rather than a reason to refuse to
+			// start and take chat down with it.
+			tlog.Warnf("[web] could not start: %s", err)
 		}
 	}
 	if c.agent != nil {
@@ -386,6 +403,11 @@ func (c *Client) localRelayIdentity(source string) (key string, shortName string
 
 // Disconnect attempts to gracefully disconnect all enabled endpoints
 func (c *Client) Disconnect(ctx context.Context) error {
+	if c.web != nil {
+		if err := c.web.Disconnect(ctx); err != nil {
+			tlog.Warnf("[web] disconnect failed: %s", err)
+		}
+	}
 	if c.hub != nil {
 		if err := c.hub.Disconnect(ctx); err != nil {
 			tlog.Warnf("[hub] disconnect failed: %s", err)

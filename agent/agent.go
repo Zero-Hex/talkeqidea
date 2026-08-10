@@ -50,6 +50,8 @@ type Agent struct {
 	subscribers []func(interface{}) error
 
 	echo *echoCache
+	// version is reported in test replies so a hub can spot a stale agent.
+	version string
 
 	isConnected atomic.Bool
 	playerCount atomic.Int64
@@ -59,6 +61,9 @@ type Agent struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 }
+
+// SetVersion records the build version reported to the hub.
+func (a *Agent) SetVersion(version string) { a.version = version }
 
 // New creates an agent from configuration.
 func New(ctx context.Context, cfg config.AgentConf) (*Agent, error) {
@@ -470,6 +475,9 @@ func (a *Agent) readLoop(ctx context.Context, conn *websocket.Conn) error {
 			}
 			a.inject(event)
 
+		case relay.FrameTest:
+			a.handleTest(frame)
+
 		case relay.FrameError:
 			relayErr := &relay.Error{}
 			if err := frame.Decode(relayErr); err == nil {
@@ -480,6 +488,81 @@ func (a *Agent) readLoop(ctx context.Context, conn *websocket.Conn) error {
 			tlog.Debugf("[agent] ignoring %s frame", frame.Type)
 		}
 	}
+}
+
+// handleTest answers a liveness probe from the hub.
+//
+// The reply reports the telnet side's health, not just that this process is
+// running: an agent whose game server connection is down is exactly the case
+// an operator is checking for, and it looks identical from the hub otherwise.
+func (a *Agent) handleTest(frame *relay.Frame) {
+	req := &relay.Test{}
+	if err := frame.Decode(req); err != nil {
+		tlog.Debugf("[agent] bad test frame: %s", err)
+		return
+	}
+
+	reply := &relay.TestReply{
+		ID:          req.ID,
+		SourceUp:    a.sourceUp.Load(),
+		PlayerCount: int(a.playerCount.Load()),
+		Version:     a.version,
+	}
+
+	if req.IsEcho {
+		reply.InjectedOK, reply.Detail = a.injectTestLine(req.Message)
+	}
+
+	out, err := relay.NewFrame(relay.FrameTestReply, reply)
+	if err != nil {
+		return
+	}
+	a.enqueue(out)
+}
+
+// injectTestLine writes a visible line into the local game server so an
+// operator can confirm the whole path, not just the relay link.
+func (a *Agent) injectTestLine(message string) (bool, string) {
+	if message == "" {
+		message = "TalkEQ relay test"
+	}
+
+	ch, ok := a.cfg.Channel("ooc")
+	if !ok || !ch.IsEnabled {
+		return false, "no enabled ooc channel to inject into"
+	}
+
+	event := relay.NewEvent("ooc", "TalkEQ", sanitize.Message(message))
+	event.Origin = relay.OriginDiscord
+	event.OriginName = "Hub"
+
+	line, err := relay.Render(ch.InboundTemplate(), event, "")
+	if err != nil {
+		return false, "render inbound pattern: " + err.Error()
+	}
+	if !sanitize.IsSafeTelnetLine(line) {
+		return false, "rendered line was unsafe to send"
+	}
+
+	// Remembered like any injection, so the echo coming back off telnet is not
+	// relayed onward as if a player had said it.
+	a.echo.remember(event)
+
+	a.mu.RLock()
+	subscribers := make([]func(interface{}) error, len(a.subscribers))
+	copy(subscribers, a.subscribers)
+	a.mu.RUnlock()
+
+	if len(subscribers) == 0 {
+		return false, "no telnet connection is wired up"
+	}
+
+	for _, s := range subscribers {
+		if err := s(request.TelnetSend{Ctx: a.ctx, Message: line}); err != nil {
+			return false, err.Error()
+		}
+	}
+	return true, ""
 }
 
 // inject writes a relayed message into the local game server.

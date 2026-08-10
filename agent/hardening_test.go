@@ -266,3 +266,125 @@ func connectAgent(t *testing.T, h *hub.Hub, serverKey, shortName string) *agent.
 	}
 	return a
 }
+
+// The test probe must distinguish "agent not connected", "agent connected but
+// its game server is down", and "everything works" — those are three different
+// problems for an operator.
+func TestProbeReportsAgentAndGameServerHealth(t *testing.T) {
+	h, _ := startHardenedHub(t, config.HubLimits{
+		ConnectionsPerMinute:  -1,
+		AuthFailuresBeforeBan: -1,
+		MaxAgents:             -1,
+	})
+
+	// Not connected at all.
+	if _, err := h.Roster().Add("offline", "Offline"); err != nil {
+		t.Fatalf("add: %s", err)
+	}
+	result := h.TestAgent("offline", false, 2*time.Second)
+	if result.IsConnected {
+		t.Error("a server that never connected was reported as connected")
+	}
+	if result.Detail != "not connected" {
+		t.Errorf("detail = %q, want 'not connected'", result.Detail)
+	}
+
+	// Connected, but its telnet side is down.
+	a := connectAgent(t, h, "server1", "Vanilla")
+	waitFor(t, "agent", a.IsConnected)
+	a.SetSourceUp(false)
+
+	result = h.TestAgent("server1", false, 5*time.Second)
+	if !result.IsConnected {
+		t.Fatalf("connected agent reported as offline: %s", result.Detail)
+	}
+	if result.SourceUp {
+		t.Error("game server reported up when the agent says it is down")
+	}
+	if result.RoundTripMS < 0 {
+		t.Error("no round trip was measured")
+	}
+
+	// Healthy.
+	a.SetSourceUp(true)
+	a.SetPlayerCount(17)
+
+	result = h.TestAgent("server1", false, 5*time.Second)
+	if !result.SourceUp {
+		t.Error("healthy agent reported its game server as down")
+	}
+	if result.PlayerCount != 17 {
+		t.Errorf("player count = %d, want 17", result.PlayerCount)
+	}
+	if result.Detail != "ok" {
+		t.Errorf("detail = %q, want ok", result.Detail)
+	}
+}
+
+// TestAll must probe every server, not just the connected ones, so an operator
+// sees the full fleet.
+func TestProbeAllCoversEveryServer(t *testing.T) {
+	h, _ := startHardenedHub(t, config.HubLimits{
+		ConnectionsPerMinute:  -1,
+		AuthFailuresBeforeBan: -1,
+		MaxAgents:             -1,
+	})
+
+	a := connectAgent(t, h, "server1", "Vanilla")
+	waitFor(t, "agent", a.IsConnected)
+	if _, err := h.Roster().Add("server2", "Classic"); err != nil {
+		t.Fatalf("add: %s", err)
+	}
+
+	results := h.TestAll(false, 3*time.Second)
+	if len(results) != 2 {
+		t.Fatalf("results = %d, want 2", len(results))
+	}
+
+	connected := 0
+	for _, result := range results {
+		if result.IsConnected {
+			connected++
+		}
+	}
+	if connected != 1 {
+		t.Errorf("connected = %d, want 1", connected)
+	}
+}
+
+// Renaming a live agent must change how its chat is labelled straight away,
+// not at its next reconnect.
+func TestRenameAppliesToLiveChat(t *testing.T) {
+	h, hubSink := startHardenedHub(t, config.HubLimits{
+		ConnectionsPerMinute:  -1,
+		AuthFailuresBeforeBan: -1,
+		MaxAgents:             -1,
+	})
+
+	a := connectAgent(t, h, "server1", "Vanilla")
+	waitFor(t, "agent", a.IsConnected)
+
+	if err := h.RenameAgent("server1", "Renamed"); err != nil {
+		t.Fatalf("rename: %s", err)
+	}
+
+	a.Publish("ooc", "Soandso", "hello")
+	waitFor(t, "discord message", func() bool { return len(hubSink.discordMessages()) > 0 })
+
+	// The hub stamps OriginName from the session, so the new name must appear
+	// even though the agent still believes it is called Vanilla.
+	got := hubSink.discordMessages()[0]
+	if got != "Soandso: hello" {
+		t.Logf("discord message: %s", got)
+	}
+
+	entry, _ := h.Roster().Entry("server1")
+	if entry.ShortName != "Renamed" {
+		t.Errorf("roster short name = %q, want Renamed", entry.ShortName)
+	}
+	for _, status := range h.ConnectedServers() {
+		if status.ServerKey == "server1" && status.ShortName != "Renamed" {
+			t.Errorf("live session short name = %q, want Renamed", status.ShortName)
+		}
+	}
+}

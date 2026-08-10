@@ -58,6 +58,7 @@ type HubConfig struct {
 	HeartbeatSecs  int          `toml:"heartbeat_seconds" desc:"How often agents report health. Default 30"`
 	QueueSize      int          `toml:"queue_size" desc:"Messages buffered per agent before the slowest agent starts dropping. Default 256"`
 	Limits         HubLimits    `toml:"limits" desc:"Abuse controls. The hub is the only internet-facing part of a relay"`
+	Web            WebConfig    `toml:"web" desc:"Local management interface"`
 	Channels       []HubChannel `toml:"channels" desc:"Which chat channels are relayed, and where they go"`
 }
 
@@ -79,6 +80,27 @@ func (c *HubLimits) BanDurationValue() time.Duration {
 		return 15 * time.Minute
 	}
 	return d
+}
+
+// WebConfig configures the local management interface.
+type WebConfig struct {
+	IsEnabled    bool   `toml:"enabled" desc:"Serve the management interface?"`
+	Listen       string `toml:"listen" desc:"Address to serve on. Default 127.0.0.1:34198\n# This interface can rewrite the telnet command patterns used on every connected\n# server, so it is bound to this machine only. To reach it from elsewhere, use an\n# SSH tunnel: ssh -L 34198:127.0.0.1:34198 you@hub"`
+	PasswordHash string `toml:"password_hash" desc:"argon2id hash of the admin password. Set it with 'talkeq-hub web password'\n# Never store the password itself here"`
+}
+
+// Verify checks the web interface configuration.
+func (c *WebConfig) Verify() error {
+	if !c.IsEnabled {
+		return nil
+	}
+	if c.Listen == "" {
+		c.Listen = "127.0.0.1:34198"
+	}
+	if c.PasswordHash == "" {
+		return fmt.Errorf("no admin password is set; run 'talkeq-hub web password' or set enabled = false")
+	}
+	return nil
 }
 
 // HubChannel is one logical chat channel the hub knows how to route.
@@ -156,6 +178,9 @@ func (c *HubConfig) verify() error {
 		c.QueueSize = 256
 	}
 	c.Limits.applyDefaults()
+	if err := c.Web.Verify(); err != nil {
+		return fmt.Errorf("web: %w", err)
+	}
 	if c.AdvertiseAddr == "" {
 		c.AdvertiseAddr = c.Listen
 	}

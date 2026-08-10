@@ -53,6 +53,8 @@ func run() error {
 			return runFirewallCommand(args[1:])
 		case "unban":
 			return runUnbanCommand(args[1:])
+		case "web":
+			return runWebCommand(args[1:])
 		case "version", "--version", "-v":
 			fmt.Printf("talkeq-hub %s\n", Version)
 			return nil
@@ -160,6 +162,7 @@ func usage() {
 	fmt.Println("  service install|start|stop|status  run as a background service")
 	fmt.Println("  firewall [--apply]                 show or apply the rule opening the hub port")
 	fmt.Println("  unban <address>                    lift a temporary block early")
+	fmt.Println("  web password|enable|disable        local management interface")
 	fmt.Println("  version                            print the version")
 }
 
