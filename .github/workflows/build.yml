@@ -20,3 +20,9 @@ jobs:
             bin/talkeq-linux
             bin/talkeq-windows.exe
             bin/talkeq-darwin
+            bin/talkeq-hub-linux
+            bin/talkeq-hub-windows.exe
+            bin/talkeq-hub-darwin
+            bin/talkeq-agent-linux
+            bin/talkeq-agent-windows.exe
+            bin/talkeq-agent-darwin

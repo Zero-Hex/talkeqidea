@@ -11,6 +11,7 @@ import (
 
 	"github.com/xackery/talkeq/relay"
 	"github.com/xackery/talkeq/sanitize"
+	"github.com/xackery/talkeq/tlog"
 )
 
 // Roster is the hub's record of which agents are allowed to connect.
@@ -23,6 +24,12 @@ type Roster struct {
 	mu      sync.RWMutex
 	path    string
 	entries map[string]*RosterEntry
+	// loadedModTime is the file's modification time as of the last read. The
+	// administrative commands run as a separate process from the hub, so both
+	// hold the roster open at once; comparing this before every access lets a
+	// running hub pick up an agent added from the CLI, and stops its next save
+	// from clobbering that addition.
+	loadedModTime time.Time
 }
 
 // RosterEntry is one authorized agent.
@@ -49,25 +56,70 @@ func NewRoster(path string) (*Roster, error) {
 		entries: make(map[string]*RosterEntry),
 	}
 
-	buf, err := os.ReadFile(path)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return nil, fmt.Errorf("read roster: %w", err)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if err := r.loadLocked(); err != nil {
+		return nil, err
+	}
+	if r.loadedModTime.IsZero() {
+		// No file yet; write an empty one so the path and its permissions are
+		// established before the first agent is added.
+		if err := r.saveLocked(); err != nil {
+			return nil, err
 		}
-		return r, r.save()
+	}
+	return r, nil
+}
+
+// loadLocked reads the roster from disk. A missing file is not an error: it
+// means no agents have been added yet.
+func (r *Roster) loadLocked() error {
+	fi, err := os.Stat(r.path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("stat roster: %w", err)
+	}
+
+	buf, err := os.ReadFile(r.path)
+	if err != nil {
+		return fmt.Errorf("read roster: %w", err)
 	}
 
 	rf := rosterFile{}
 	if err := json.Unmarshal(buf, &rf); err != nil {
-		return nil, fmt.Errorf("parse roster %s: %w", path, err)
+		return fmt.Errorf("parse roster %s: %w", r.path, err)
 	}
+
+	r.entries = make(map[string]*RosterEntry, len(rf.Agents))
 	for _, entry := range rf.Agents {
 		if entry.ServerKey == "" {
 			continue
 		}
 		r.entries[entry.ServerKey] = entry
 	}
-	return r, nil
+	r.loadedModTime = fi.ModTime()
+	return nil
+}
+
+// refreshLocked re-reads the roster when another process has written it.
+//
+// Called at the start of every read and every mutation. Without it, a running
+// hub would neither see an agent added by the CLI nor preserve it: the hub's
+// next save writes its own stale map over the file.
+func (r *Roster) refreshLocked() {
+	fi, err := os.Stat(r.path)
+	if err != nil {
+		return
+	}
+	if fi.ModTime().Equal(r.loadedModTime) {
+		return
+	}
+	if err := r.loadLocked(); err != nil {
+		tlog.Warnf("[hub] roster changed on disk but could not be reloaded: %s", err)
+	}
 }
 
 // Add registers a new agent and returns its token. The token is shown once,
@@ -88,6 +140,8 @@ func (r *Roster) Add(serverKey, shortName string) (string, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	r.refreshLocked()
+
 	if _, ok := r.entries[serverKey]; ok {
 		return "", fmt.Errorf("agent %s already exists (use rotate to issue a new token)", serverKey)
 	}
@@ -107,7 +161,7 @@ func (r *Roster) Add(serverKey, shortName string) (string, error) {
 		TokenHash: hash,
 		CreatedAt: time.Now().Unix(),
 	}
-	if err := r.save(); err != nil {
+	if err := r.saveLocked(); err != nil {
 		delete(r.entries, serverKey)
 		return "", err
 	}
@@ -120,6 +174,8 @@ func (r *Roster) Rotate(serverKey string) (string, error) {
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	r.refreshLocked()
 
 	entry, ok := r.entries[serverKey]
 	if !ok {
@@ -137,7 +193,7 @@ func (r *Roster) Rotate(serverKey string) (string, error) {
 
 	previous := entry.TokenHash
 	entry.TokenHash = hash
-	if err := r.save(); err != nil {
+	if err := r.saveLocked(); err != nil {
 		entry.TokenHash = previous
 		return "", err
 	}
@@ -151,11 +207,13 @@ func (r *Roster) Remove(serverKey string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	r.refreshLocked()
+
 	if _, ok := r.entries[serverKey]; !ok {
 		return fmt.Errorf("agent %s not found", serverKey)
 	}
 	delete(r.entries, serverKey)
-	return r.save()
+	return r.saveLocked()
 }
 
 // SetEnabled toggles an agent without discarding its token.
@@ -165,12 +223,14 @@ func (r *Roster) SetEnabled(serverKey string, isEnabled bool) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	r.refreshLocked()
+
 	entry, ok := r.entries[serverKey]
 	if !ok {
 		return fmt.Errorf("agent %s not found", serverKey)
 	}
 	entry.IsDisabled = !isEnabled
-	return r.save()
+	return r.saveLocked()
 }
 
 // Authenticate resolves a token to the agent it belongs to.
@@ -186,7 +246,9 @@ func (r *Roster) Authenticate(claimedKey, token string) (*RosterEntry, error) {
 		return nil, fmt.Errorf("no token supplied")
 	}
 
-	r.mu.RLock()
+	// Take the write lock: a refresh may replace the entry map.
+	r.mu.Lock()
+	r.refreshLocked()
 	candidates := make([]*RosterEntry, 0, len(r.entries))
 	if entry, ok := r.entries[sanitize.ServerKey(claimedKey)]; ok {
 		candidates = append(candidates, entry)
@@ -197,7 +259,7 @@ func (r *Roster) Authenticate(claimedKey, token string) (*RosterEntry, error) {
 		}
 		candidates = append(candidates, entry)
 	}
-	r.mu.RUnlock()
+	r.mu.Unlock()
 
 	for _, entry := range candidates {
 		if !relay.VerifyToken(token, entry.TokenHash) {
@@ -213,8 +275,10 @@ func (r *Roster) Authenticate(claimedKey, token string) (*RosterEntry, error) {
 
 // Entry returns a copy of an agent's record.
 func (r *Roster) Entry(serverKey string) (RosterEntry, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.refreshLocked()
 	entry, ok := r.entries[sanitize.ServerKey(serverKey)]
 	if !ok {
 		return RosterEntry{}, false
@@ -224,8 +288,10 @@ func (r *Roster) Entry(serverKey string) (RosterEntry, bool) {
 
 // Entries returns every agent, sorted by server key.
 func (r *Roster) Entries() []RosterEntry {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.refreshLocked()
 
 	out := make([]RosterEntry, 0, len(r.entries))
 	for _, entry := range r.entries {
@@ -239,6 +305,8 @@ func (r *Roster) Entries() []RosterEntry {
 func (r *Roster) MarkSeen(serverKey string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	r.refreshLocked()
 	entry, ok := r.entries[serverKey]
 	if !ok {
 		return
@@ -246,12 +314,12 @@ func (r *Roster) MarkSeen(serverKey string) {
 	entry.LastSeenAt = time.Now().Unix()
 	// A failed save here is not worth failing the connection over; the roster
 	// is still correct in memory and last-seen is informational.
-	_ = r.save()
+	_ = r.saveLocked()
 }
 
 // save writes the roster atomically so a crash mid-write cannot leave the hub
 // unable to authenticate any agent.
-func (r *Roster) save() error {
+func (r *Roster) saveLocked() error {
 	rf := rosterFile{Agents: make([]*RosterEntry, 0, len(r.entries))}
 	for _, entry := range r.entries {
 		rf.Agents = append(rf.Agents, entry)
@@ -284,6 +352,12 @@ func (r *Roster) save() error {
 	}
 	if err := os.Rename(tmpName, r.path); err != nil {
 		return fmt.Errorf("replace roster: %w", err)
+	}
+
+	// Record what we just wrote so the next refresh does not treat our own
+	// write as someone else's change.
+	if fi, err := os.Stat(r.path); err == nil {
+		r.loadedModTime = fi.ModTime()
 	}
 	return nil
 }

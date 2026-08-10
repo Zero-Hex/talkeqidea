@@ -47,104 +47,83 @@ connected server.
 
 ### How it fits together
 
-One instance runs as the **hub** and every other server runs as an **agent**.
-The hub holds the Discord bot, the routing rules, and the list of authorized
-agents. An agent holds only its own token, so a compromised game server cannot
-read the Discord credentials or impersonate another server.
+There are two programs. **`talkeq-hub`** runs on one box and holds the Discord
+bot, the routing rules, and the list of authorized servers. **`talkeq-agent`**
+runs on each game server, reports its chat, and injects what comes back.
 
 ```
-   server 1 (agent) ──┐
-   server 2 (agent) ──┼── hub ── Discord
-   server 3 (agent) ──┘
+   server 1 (talkeq-agent) --+
+   server 2 (talkeq-agent) --+-- talkeq-hub -- Discord
+   server 3 (talkeq-agent) --+
 ```
 
-The hub can also be a game server itself. Set `local_server_key` in
-`[relay.hub]` and its own chat joins the relay alongside the agents.
+Agents dial **out** to the hub and hold the connection open. That means:
 
-`relay.mode` defaults to `standalone`, which is exactly how TalkEQ behaved
-before cross-server chat existed. An existing `talkeq.conf` keeps working with
-no changes.
+* No port forwarding on any game server, and no fixed IP needed.
+* Agents behind NAT work with no configuration.
+* One open port in the whole system, on the hub.
+* A compromised game server holds only its own token. No Discord credentials
+  and no other server's access.
+
+The hub can also be a game server itself; its setup asks.
+
+The original `talkeq` binary is unchanged and still runs a single server on its
+own. Cross-server chat is opt-in.
 
 ### Setting up the hub
 
-On the box that runs your Discord bot, edit `talkeq.conf`:
+Run `talkeq-hub` on the box that will host your Discord bot. With no config
+present it walks you through setup, or run `talkeq-hub setup` to reconfigure.
 
-```toml
-[relay]
-  mode = "hub"
-
-  [relay.hub]
-    listen = ":9443"
-    # Where agents on other boxes should dial this hub.
-    advertise_address = "your-hub-host.example.com:9443"
-
-    [[relay.hub.channels]]
-      name = "ooc"
-      enabled = true
-      cross_server = true
-      discord_channel_id = "123456789012345678"
-      discord_pattern = "**[{{.OriginName}}]** {{.Name}} **OOC**: {{.Message}}"
-```
-
-Then authorize each server that will connect:
+It asks for your Discord bot credentials, the OOC channel, which port to
+listen on, and the address agents should dial. At the end it prints the
+certificate fingerprint:
 
 ```
-./talkeq agent add server2 "Classic"
+  Certificate fingerprint:
+
+    1d29bcd19333e1d474bf174d2a16f51f26c2150bd3309251aca04b07358f0afe
 ```
 
-That prints a **join code** — a single blob containing the hub address, the
-agent's token, and the hub's TLS certificate fingerprint. It is shown once and
-cannot be recovered; use `talkeq agent rotate` to issue a new one.
+Keep that handy; each agent shows it during setup and asks you to confirm.
+
+### Adding a server
+
+On the hub:
 
 ```
-./talkeq agent list                # show authorized servers
-./talkeq agent rotate server2      # new token, invalidates the old one
-./talkeq agent disable server2     # temporarily block
-./talkeq agent remove server2      # revoke
+$ talkeq-hub enroll server2 "Classic"
+
+Enrollment code for Classic:
+
+    Hub address:      hub.example.com:34197
+    Enrollment code:  T723-EZX2-67VF
+    Fingerprint:      1d29bcd193...
 ```
 
-### Setting up an agent
+Then on the game server, run `talkeq-agent`. It asks for the hub address and
+that code, shows the fingerprint it received, and asks you to confirm it
+matches what the hub printed. Once confirmed it receives its permanent
+credentials, writes its config, and is ready to run.
 
-On each game server, paste the join code:
+The code is single use and expires in 15 minutes. The hub must be running for
+an agent to enroll.
 
-```toml
-[relay]
-  mode = "agent"
+Other hub commands:
 
-  [relay.agent]
-    join_code = "talkeq1_..."
-    short_name = "Classic"
-
-    [[relay.agent.channels]]
-      name = "ooc"
-      enabled = true
-      inbound_pattern = "emote world 260 {{.Name}} says from {{.OriginName}}, '{{.Message}}'"
+```
+talkeq-hub status                  # configured servers and when they last connected
+talkeq-hub enroll list             # outstanding codes
+talkeq-hub enroll revoke <id>      # cancel a code
+talkeq-hub agent list              # authorized servers
+talkeq-hub agent rotate server2    # new token, invalidates the old one
+talkeq-hub agent disable server2   # temporarily block
+talkeq-hub agent remove server2    # revoke
 ```
 
-Then point a telnet route at the relay so local chat is reported upward:
-
-```toml
-[[telnet.routes]]
-  enabled = true
-  target = "relay"
-  channel = "ooc"
-  [telnet.routes.trigger]
-    telnet_pattern = "(\\w+) says ooc, '(.*)'"
-    name_index = 1
-    message_index = 2
-```
-
-To let Discord users talk into the relay, add a Discord route with the same
-target on the hub:
-
-```toml
-[[discord.routes]]
-  enabled = true
-  target = "relay"
-  channel = "ooc"
-  [discord.routes.discord_trigger]
-    channel_id = "123456789012345678"
-```
+For scripted installs, `talkeq-hub agent add <key> [name]` prints a join code
+that can be dropped into a provisioning template instead, skipping the
+interactive enrollment.
 
 ### Message patterns
 
@@ -159,25 +138,39 @@ Variable|Meaning
 `{{.Channel}}`|Logical channel, e.g. `ooc`
 
 Each destination renders its own wording, so Discord formatting and in-game
-wording stay independent.
+wording stay independent. The hub side is `discord_pattern` under
+`[[relay.hub.channels]]`; the agent side is `inbound_pattern` under
+`[[relay.agent.channels]]`.
 
 ### Security
 
 * **Per-agent tokens.** Each server gets its own, so one can be revoked without
-  re-keying the others. The hub stores argon2id hashes only — a leaked
-  `talkeq_agents.json` does not grant access.
+  re-keying the others. The hub stores argon2id hashes only, so a leaked
+  `talkeq_agents.json` grants nothing.
 * **Identity follows the token.** The hub stamps the originating server from
   whichever token authenticated, ignoring whatever name the agent claims. An
   agent cannot post as another server.
-* **TLS by default.** `tls_mode = "self-signed"` generates a certificate on
-  first run and agents pin its fingerprint via the join code. If your hub has a
-  public DNS name and a real certificate, use `tls_mode = "file"` and leave the
-  fingerprint empty. `tls_mode = "none"` sends tokens in the clear and is only
-  appropriate when the hub is reachable solely over a private network such as
-  WireGuard.
+* **Enrollment codes** are single use, expire in 15 minutes, and burn after a
+  handful of failed attempts. The durable token is never typed by a human.
+* **Certificate pinning.** The hub generates a self-signed certificate on first
+  run and each agent pins its fingerprint after you confirm it. Against an
+  attacker who can obtain a certificate from any public CA, a pin is stronger
+  than normal chain verification. If your hub has a real certificate, set
+  `tls_mode = "file"` and leave the fingerprint empty.
 * **Command injection.** Relayed names and messages are stripped of line breaks
   and control characters before they can reach a telnet console, and every
   outgoing line is re-checked immediately before it is written.
+
+`tls_mode = "none"` exists for hubs reachable only over a private network such
+as WireGuard. It sends tokens in the clear; the setup wizard asks twice before
+accepting it.
+
+### Choosing a port
+
+The default is 34197. Note that an unusual port is not a security measure —
+internet-wide scanners sweep every port continuously. It is only there to avoid
+sitting on a number people probe by habit. What protects the hub is the token
+authentication and TLS above.
 
 ### Loop prevention
 

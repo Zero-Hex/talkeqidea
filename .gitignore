@@ -45,3 +45,9 @@ talkeq_users.txt
 talkeq.log
 
 .DS_Store
+# Relay state written at runtime
+talkeq_agents.json
+talkeq_enroll.json
+talkeq_hub_cert.pem
+talkeq_hub_key.pem
+talkeq.conf.bak

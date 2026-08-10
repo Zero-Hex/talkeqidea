@@ -15,18 +15,14 @@ import (
 var Version string
 
 func main() {
-	// Subcommands run before the log file is created: they are short-lived
-	// administrative commands and should not fight a running talkeq for the
-	// log, or leave a stray one behind.
+	// Relay administration lives in talkeq-hub. This binary is the original
+	// single-server talkeq and stays that way.
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
-		case "agent":
-			tlog.Init(nil, os.Stdout)
-			if err := runAgentCommand(os.Args[2:]); err != nil {
-				fmt.Fprintf(os.Stderr, "error: %s\n", err)
-				os.Exit(1)
-			}
-			os.Exit(0)
+		case "agent", "enroll", "setup":
+			fmt.Printf("%q is a relay command. Use talkeq-hub or talkeq-agent instead.\n", os.Args[1])
+			fmt.Println("This binary runs the original single-server talkeq.")
+			os.Exit(1)
 		}
 	}
 

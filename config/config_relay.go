@@ -44,8 +44,9 @@ type Relay struct {
 
 // HubConfig configures the central router.
 type HubConfig struct {
-	Listen         string       `toml:"listen" desc:"Address to accept agent connections on. Default :9443"`
-	AgentsDatabase string       `toml:"agents_database" desc:"Where authorized agents and their hashed tokens are stored.\n# Managed with 'talkeq agent add/list/rotate/remove' - not meant to be hand edited"`
+	Listen         string       `toml:"listen" desc:"Address to accept agent connections on. Default :34197"`
+	AgentsDatabase string       `toml:"agents_database" desc:"Where authorized agents and their hashed tokens are stored.\n# Managed with 'talkeq-hub agent add/list/rotate/remove' - not meant to be hand edited"`
+	EnrollDatabase string       `toml:"enroll_database" desc:"Where outstanding enrollment codes are held until they are used or expire.\n# Managed with 'talkeq-hub enroll' - not meant to be hand edited"`
 	TLSMode        string       `toml:"tls_mode" desc:"self-signed (default, agents pin the fingerprint), letsencrypt, file, or none\n# Use none ONLY if the hub is reachable exclusively over a private network"`
 	TLSCertPath    string       `toml:"tls_cert" desc:"Certificate path when tls_mode = \"file\", or where the self-signed cert is cached"`
 	TLSKeyPath     string       `toml:"tls_key" desc:"Key path when tls_mode = \"file\", or where the self-signed key is cached"`
@@ -115,10 +116,13 @@ func (c *Relay) Verify() error {
 
 func (c *HubConfig) verify() error {
 	if c.Listen == "" {
-		c.Listen = ":9443"
+		c.Listen = ":34197"
 	}
 	if c.AgentsDatabase == "" {
 		c.AgentsDatabase = "talkeq_agents.json"
+	}
+	if c.EnrollDatabase == "" {
+		c.EnrollDatabase = "talkeq_enroll.json"
 	}
 	if c.TLSMode == "" {
 		c.TLSMode = TLSSelfSigned

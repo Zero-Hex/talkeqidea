@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func newTestRoster(t *testing.T) (*Roster, string) {
@@ -166,6 +167,46 @@ func TestRosterPersistsAcrossReload(t *testing.T) {
 	}
 	if entry.ShortName != "Vanilla" {
 		t.Errorf("short name = %q, want Vanilla", entry.ShortName)
+	}
+}
+
+// The CLI and a running hub are separate processes holding the same roster.
+// An agent added by one must be visible to the other, and must survive the
+// other's next write.
+func TestRosterPicksUpConcurrentProcessChanges(t *testing.T) {
+	running, path := newTestRoster(t)
+
+	cli, err := NewRoster(path)
+	if err != nil {
+		t.Fatalf("second handle: %s", err)
+	}
+
+	// The roster stores second-granularity mod times on some filesystems, so
+	// make sure the write lands in a distinguishable tick.
+	time.Sleep(10 * time.Millisecond)
+
+	token, err := cli.Add("server2", "Classic")
+	if err != nil {
+		t.Fatalf("add via cli: %s", err)
+	}
+
+	entry, err := running.Authenticate("server2", token)
+	if err != nil {
+		t.Fatalf("running hub did not see the agent added by the cli: %s", err)
+	}
+	if entry.ShortName != "Classic" {
+		t.Errorf("short name = %q, want Classic", entry.ShortName)
+	}
+
+	// A write from the running hub must not drop the CLI's addition.
+	running.MarkSeen("server2")
+
+	reloaded, err := NewRoster(path)
+	if err != nil {
+		t.Fatalf("reload: %s", err)
+	}
+	if _, err := reloaded.Authenticate("server2", token); err != nil {
+		t.Errorf("agent was clobbered by the running hub's save: %s", err)
 	}
 }
 

@@ -181,8 +181,9 @@ func getDefaultConfig() Config {
 	// rather than something to invent.
 	cfg.Relay.Mode = ModeStandalone
 
-	cfg.Relay.Hub.Listen = ":9443"
+	cfg.Relay.Hub.Listen = ":34197"
 	cfg.Relay.Hub.AgentsDatabase = "talkeq_agents.json"
+	cfg.Relay.Hub.EnrollDatabase = "talkeq_enroll.json"
 	cfg.Relay.Hub.TLSMode = TLSSelfSigned
 	cfg.Relay.Hub.TLSCertPath = "talkeq_hub_cert.pem"
 	cfg.Relay.Hub.TLSKeyPath = "talkeq_hub_key.pem"

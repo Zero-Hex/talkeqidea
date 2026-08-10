@@ -26,6 +26,7 @@ type Hub struct {
 	mu       sync.RWMutex
 	cfg      config.HubConfig
 	roster   *Roster
+	enroll   *EnrollStore
 	router   *Router
 	sessions map[string]*Session
 
@@ -50,9 +51,16 @@ func New(ctx context.Context, cfg config.HubConfig) (*Hub, error) {
 		return nil, fmt.Errorf("roster: %w", err)
 	}
 
+	enroll, err := NewEnrollStore(cfg.EnrollDatabase)
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("enroll store: %w", err)
+	}
+
 	h := &Hub{
 		cfg:      cfg,
 		roster:   roster,
+		enroll:   enroll,
 		sessions: make(map[string]*Session),
 		ctx:      ctx,
 		cancel:   cancel,
@@ -63,6 +71,9 @@ func New(ctx context.Context, cfg config.HubConfig) (*Hub, error) {
 
 // Roster exposes the agent roster for the CLI subcommands.
 func (h *Hub) Roster() *Roster { return h.roster }
+
+// Enroll exposes the enrollment store for the CLI subcommands.
+func (h *Hub) Enroll() *EnrollStore { return h.enroll }
 
 // Fingerprint returns the hex SHA-256 of the hub's TLS certificate, which is
 // what agents pin. Empty when TLS is disabled.
@@ -177,6 +188,17 @@ func (h *Hub) Addr() string {
 	return h.listener.Addr().String()
 }
 
+// AdvertiseAddress is where agents should be told to dial. It differs from
+// Addr, which is the local bind address and may be a wildcard.
+func (h *Hub) AdvertiseAddress() string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	if h.cfg.AdvertiseAddr != "" {
+		return h.cfg.AdvertiseAddr
+	}
+	return h.cfg.Listen
+}
+
 // Disconnect stops the listener and closes every session.
 func (h *Hub) Disconnect(ctx context.Context) error {
 	h.mu.Lock()
@@ -233,6 +255,13 @@ func (h *Hub) handleAgent(w http.ResponseWriter, r *http.Request) {
 		conn.Close()
 		return
 	}
+	// An agent that has a code but no token yet enrolls instead of connecting.
+	// Enrollment is a one-shot exchange: the connection closes either way.
+	if frame.Type == relay.FrameEnroll {
+		h.handleEnroll(conn, frame, r.RemoteAddr)
+		return
+	}
+
 	if frame.Type != relay.FrameHello {
 		tlog.Debugf("[hub] first frame was %s, expected hello", frame.Type)
 		conn.Close()
@@ -293,6 +322,68 @@ func (h *Hub) handleAgent(w http.ResponseWriter, r *http.Request) {
 
 	h.removeSession(session)
 	tlog.Infof("[hub] agent %s disconnected after %s (%d dropped)", session, time.Since(session.connectedAt).Round(time.Second), session.Dropped())
+}
+
+// handleEnroll exchanges a valid enrollment code for a durable token.
+//
+// The agent is not yet in the roster, so this runs before any session exists
+// and always ends with the connection closed. The agent reconnects normally
+// with the token it was issued.
+func (h *Hub) handleEnroll(conn *websocket.Conn, frame *relay.Frame, remoteAddr string) {
+	defer conn.Close()
+
+	session := newSession("", "", conn, 1)
+
+	req := &relay.Enroll{}
+	if err := frame.Decode(req); err != nil {
+		tlog.Debugf("[hub] decode enroll failed: %s", err)
+		return
+	}
+	if req.ProtocolVersion != relay.ProtocolVersion {
+		session.sendError(relay.ErrCodeVersionMismatch,
+			fmt.Sprintf("hub speaks protocol %d, agent speaks %d - upgrade the older side", relay.ProtocolVersion, req.ProtocolVersion))
+		return
+	}
+
+	entry, err := h.enroll.Redeem(req.Code)
+	if err != nil {
+		tlog.Warnf("[hub] enrollment from %s rejected: %s", remoteAddr, err)
+		// Deliberately vague: distinguishing "unknown" from "expired" would
+		// tell a guesser when they had found a real code.
+		session.sendError(relay.ErrCodeEnrollment, "enrollment code was not accepted")
+		return
+	}
+
+	token, err := h.roster.Add(entry.ServerKey, entry.ShortName)
+	if err != nil {
+		tlog.Warnf("[hub] enrollment for %s failed: %s", entry.ServerKey, err)
+		session.sendError(relay.ErrCodeEnrollment, err.Error())
+		return
+	}
+
+	reply, err := relay.NewFrame(relay.FrameEnrolled, &relay.Enrolled{
+		ServerKey: entry.ServerKey,
+		ShortName: entry.ShortName,
+		Token:     token,
+	})
+	if err != nil {
+		session.sendError(relay.ErrCodeEnrollment, "could not issue credentials")
+		return
+	}
+
+	conn.SetWriteDeadline(time.Now().Add(writeWait))
+	if err := conn.WriteJSON(reply); err != nil {
+		// The agent never received the token but the roster entry exists. Roll
+		// it back so the operator can reissue a code rather than being told
+		// the server already exists.
+		tlog.Warnf("[hub] enrolled %s but could not deliver the token, rolling back: %s", entry.ServerKey, err)
+		if removeErr := h.roster.Remove(entry.ServerKey); removeErr != nil {
+			tlog.Warnf("[hub] rollback of %s failed: %s", entry.ServerKey, removeErr)
+		}
+		return
+	}
+
+	tlog.Infof("[hub] enrolled %s (%s) from %s", entry.ServerKey, entry.ShortName, remoteAddr)
 }
 
 func (h *Hub) addSession(s *Session) {

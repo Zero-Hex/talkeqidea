@@ -81,11 +81,15 @@ func waitFor(t *testing.T, what string, cond func() bool) {
 func startHub(t *testing.T) (*hub.Hub, *collector) {
 	t.Helper()
 
+	// Keep every file the hub writes inside the test's temp directory.
+	stateDir := t.TempDir()
+
 	relayCfg := &config.Relay{
 		Mode: config.ModeHub,
 		Hub: config.HubConfig{
 			Listen:         "127.0.0.1:0",
-			AgentsDatabase: filepath.Join(t.TempDir(), "agents.json"),
+			AgentsDatabase: filepath.Join(stateDir, "agents.json"),
+			EnrollDatabase: filepath.Join(stateDir, "enroll.json"),
 			TLSMode:        config.TLSNone,
 			HeartbeatSecs:  5,
 			Channels: []config.HubChannel{

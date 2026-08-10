@@ -154,8 +154,30 @@ func (c *Client) newRelay(ctx context.Context) error {
 		if err = c.agent.Subscribe(ctx, c.onMessage); err != nil {
 			return fmt.Errorf("agent subscribe: %w", err)
 		}
+		c.disableHubOnlyServices()
 	}
 	return nil
+}
+
+// disableHubOnlyServices switches off the services that cannot work on an
+// agent, whatever the config file says.
+//
+// Discord, the registration API and SQL reporting all need the bot, which only
+// the hub has. An agent that left them enabled would bind the API port for
+// nothing, and would fail outright when an agent and the hub share a box.
+func (c *Client) disableHubOnlyServices() {
+	if c.config.Discord.IsEnabled {
+		tlog.Infof("[talkeq] discord is disabled in agent mode; the hub owns the bot")
+		c.config.Discord.IsEnabled = false
+	}
+	if c.config.API.IsEnabled {
+		tlog.Infof("[talkeq] api is disabled in agent mode; it runs on the hub")
+		c.config.API.IsEnabled = false
+	}
+	if c.config.SQLReport.IsEnabled {
+		tlog.Infof("[talkeq] sql_report is disabled in agent mode; it runs on the hub")
+		c.config.SQLReport.IsEnabled = false
+	}
 }
 
 // Connect attempts to connect to all enabled endpoints
