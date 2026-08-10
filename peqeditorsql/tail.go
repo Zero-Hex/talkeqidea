@@ -8,8 +8,8 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 	"github.com/nxadm/tail"
-	"github.com/xackery/talkeq/tlog"
 )
 
 // tail wraps the tail tool for each file being watched

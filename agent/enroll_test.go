@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xackery/talkeq/agent"
-	"github.com/xackery/talkeq/hub"
-	"github.com/xackery/talkeq/relay"
+	"github.com/Zero-Hex/modern-eq-chat/agent"
+	"github.com/Zero-Hex/modern-eq-chat/hub"
+	"github.com/Zero-Hex/modern-eq-chat/relay"
 )
 
 // The setup path an operator actually walks: the hub issues a short code, the

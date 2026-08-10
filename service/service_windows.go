@@ -24,7 +24,7 @@ func (m *windowsManager) connect() (*mgr.Mgr, error) {
 	scm, err := mgr.Connect()
 	if err != nil {
 		if !IsElevated() {
-			return nil, fmt.Errorf("could not reach the Service Control Manager. %s", ElevationHint("talkeq", "service", "install"))
+			return nil, fmt.Errorf("could not reach the Service Control Manager. %s", ElevationHint("modern-eq-chat", "service", "install"))
 		}
 		return nil, fmt.Errorf("connect to service manager: %w", err)
 	}
@@ -82,7 +82,7 @@ func (m *windowsManager) Install(def Definition) error {
 
 func (m *windowsManager) Uninstall(name string) error {
 	if !IsElevated() {
-		return fmt.Errorf("removing a service needs administrator rights. %s", ElevationHint("talkeq", "service", "uninstall"))
+		return fmt.Errorf("removing a service needs administrator rights. %s", ElevationHint("modern-eq-chat", "service", "uninstall"))
 	}
 
 	scm, err := m.connect()
@@ -112,7 +112,7 @@ func (m *windowsManager) Uninstall(name string) error {
 
 func (m *windowsManager) Start(name string) error {
 	if !IsElevated() {
-		return fmt.Errorf("starting a service needs administrator rights. %s", ElevationHint("talkeq", "service", "start"))
+		return fmt.Errorf("starting a service needs administrator rights. %s", ElevationHint("modern-eq-chat", "service", "start"))
 	}
 
 	scm, err := m.connect()
@@ -135,7 +135,7 @@ func (m *windowsManager) Start(name string) error {
 
 func (m *windowsManager) Stop(name string) error {
 	if !IsElevated() {
-		return fmt.Errorf("stopping a service needs administrator rights. %s", ElevationHint("talkeq", "service", "stop"))
+		return fmt.Errorf("stopping a service needs administrator rights. %s", ElevationHint("modern-eq-chat", "service", "stop"))
 	}
 
 	scm, err := m.connect()

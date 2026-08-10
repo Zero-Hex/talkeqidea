@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/hub"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/hub"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 )
 
 const testPassword = "correct-horse-battery"
@@ -29,7 +29,7 @@ func startServer(t *testing.T) (*Server, string) {
 	t.Helper()
 
 	stateDir := t.TempDir()
-	configPath := filepath.Join(stateDir, "talkeq.conf")
+	configPath := filepath.Join(stateDir, "modern-eq-chat.conf")
 
 	hash, err := HashPassword(testPassword)
 	if err != nil {
@@ -261,7 +261,7 @@ func TestLogoutInvalidatesTheSession(t *testing.T) {
 }
 
 // A bad channel pattern must be rejected outright. If it were accepted, it
-// would be written to talkeq.conf and break the hub's next startup.
+// would be written to modern-eq-chat.conf and break the hub's next startup.
 func TestInvalidChannelPatternIsRejected(t *testing.T) {
 	s, configPath := startServer(t)
 	c := newClient(t, s)
@@ -482,7 +482,7 @@ func TestSecurityHeadersAreSet(t *testing.T) {
 }
 
 func TestServerRefusesWithoutPassword(t *testing.T) {
-	_, err := New(config.WebConfig{IsEnabled: true, Listen: "127.0.0.1:0"}, &hub.Hub{}, "talkeq.conf")
+	_, err := New(config.WebConfig{IsEnabled: true, Listen: "127.0.0.1:0"}, &hub.Hub{}, "modern-eq-chat.conf")
 	if err == nil {
 		t.Fatal("the web interface started with no admin password")
 	}
@@ -525,7 +525,7 @@ func TestStaticAssetsAreServed(t *testing.T) {
 	}
 
 	// A traversal attempt must not escape the embedded filesystem.
-	resp, err := http.Get("http://" + s.Addr() + "/../../talkeq.conf")
+	resp, err := http.Get("http://" + s.Addr() + "/../../modern-eq-chat.conf")
 	if err != nil {
 		t.Fatalf("traversal request: %s", err)
 	}

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/xackery/talkeq/config"
+	"github.com/Zero-Hex/modern-eq-chat/config"
 )
 
 // script drives a wizard with canned answers, one per line.
@@ -21,7 +21,7 @@ func script(answers ...string) *bytes.Buffer {
 // hub that refuses to start.
 func TestRunHubWritesUsableConfig(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "talkeq.conf")
+	path := filepath.Join(dir, "modern-eq-chat.conf")
 
 	// Run in the temp dir so generated certificates and databases land there.
 	chdir(t, dir)
@@ -95,7 +95,7 @@ func TestRunHubWritesUsableConfig(t *testing.T) {
 // Re-running the wizard must not discard settings it never asks about.
 func TestRunHubPreservesUnrelatedSettings(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "talkeq.conf")
+	path := filepath.Join(dir, "modern-eq-chat.conf")
 	chdir(t, dir)
 
 	seed := config.Default()
@@ -137,7 +137,7 @@ func TestRunHubPreservesUnrelatedSettings(t *testing.T) {
 // answers, not one.
 func TestRunHubRequiresConfirmationToDisableTLS(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "talkeq.conf")
+	path := filepath.Join(dir, "modern-eq-chat.conf")
 	chdir(t, dir)
 
 	in := script(

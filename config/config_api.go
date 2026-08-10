@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 )
 
 // API represents an API listening service

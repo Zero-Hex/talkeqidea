@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Zero-Hex/modern-eq-chat/guilddb"
+	"github.com/Zero-Hex/modern-eq-chat/request"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/userdb"
 	"github.com/bwmarrin/discordgo"
-	"github.com/xackery/talkeq/guilddb"
-	"github.com/xackery/talkeq/request"
-	"github.com/xackery/talkeq/tlog"
-	"github.com/xackery/talkeq/userdb"
 )
 
 func (t *Discord) handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {

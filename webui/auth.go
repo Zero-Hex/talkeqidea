@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xackery/talkeq/guard"
-	"github.com/xackery/talkeq/relay"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/guard"
+	"github.com/Zero-Hex/modern-eq-chat/relay"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 )
 
 // Authentication for the web interface.
@@ -24,8 +24,8 @@ import (
 // that expire, CSRF on every mutation, and rate-limited logins.
 
 const (
-	sessionCookie = "talkeq_session"
-	csrfHeader    = "X-TalkEQ-CSRF"
+	sessionCookie = "meqc_session"
+	csrfHeader    = "X-MEQC-CSRF"
 
 	// sessionTTL is how long a login lasts without activity.
 	sessionTTL = 8 * time.Hour
@@ -155,7 +155,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.passwordHash == "" {
-		writeError(w, http.StatusServiceUnavailable, "no admin password is set; run 'talkeq-hub web password'")
+		writeError(w, http.StatusServiceUnavailable, "no admin password is set; run 'modern-eq-chat-hub web password'")
 		return
 	}
 

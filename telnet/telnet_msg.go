@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/xackery/talkeq/guilddb"
-	"github.com/xackery/talkeq/request"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/guilddb"
+	"github.com/Zero-Hex/modern-eq-chat/request"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 )
 
 var (
@@ -122,7 +122,7 @@ func (t *Telnet) parseMessage(msg string) bool {
 				if route.ChannelID == "INSERTGLOBALGUILDCHANNELHERE" {
 					continue //in cases a guild route happened and default settings, no need to attempt the route
 				}
-				tlog.Debugf("[telnet] route %d guild_index %d is not in talkeq_guilds, falling back to discord channel %s", routeIndex, iGuildID, route.ChannelID)
+				tlog.Debugf("[telnet] route %d guild_index %d is not in modern-eq-chat-guilds.txt, falling back to discord channel %s", routeIndex, iGuildID, route.ChannelID)
 			} else {
 				route.ChannelID = tmpChannelID
 			}

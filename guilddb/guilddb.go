@@ -7,9 +7,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 	"github.com/fsnotify/fsnotify"
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/tlog"
 )
 
 var (

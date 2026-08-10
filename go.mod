@@ -1,4 +1,4 @@
-module github.com/xackery/talkeq
+module github.com/Zero-Hex/modern-eq-chat
 
 go 1.24.0
 

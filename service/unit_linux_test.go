@@ -12,11 +12,11 @@ import (
 // read and least likely to test, so its contents are asserted directly.
 func TestUnitFileContents(t *testing.T) {
 	def := Definition{
-		Name:             "talkeq-hub",
-		DisplayName:      "TalkEQ Hub",
+		Name:             "modern-eq-chat-hub",
+		DisplayName:      "Modern EQ Chat Hub",
 		Description:      "Relays EverQuest chat.",
-		ExecutablePath:   "/opt/talkeq/talkeq-hub",
-		WorkingDirectory: "/opt/talkeq",
+		ExecutablePath:   "/opt/modern-eq-chat/modern-eq-chat-hub",
+		WorkingDirectory: "/opt/modern-eq-chat",
 	}
 
 	buf := &bytes.Buffer{}
@@ -27,12 +27,12 @@ func TestUnitFileContents(t *testing.T) {
 
 	required := []string{
 		"Description=Relays EverQuest chat.",
-		"ExecStart=/opt/talkeq/talkeq-hub",
-		// Without this the service starts in / and finds no talkeq.conf.
-		"WorkingDirectory=/opt/talkeq",
+		"ExecStart=/opt/modern-eq-chat/modern-eq-chat-hub",
+		// Without this the service starts in / and finds no modern-eq-chat.conf.
+		"WorkingDirectory=/opt/modern-eq-chat",
 		// Without this the hardened ProtectSystem=strict makes the config,
 		// roster and log unwritable.
-		"ReadWritePaths=/opt/talkeq",
+		"ReadWritePaths=/opt/modern-eq-chat",
 		"Restart=on-failure",
 		"WantedBy=multi-user.target",
 		// Wait for real connectivity, not just for the network stack to exist,
@@ -62,9 +62,9 @@ func TestUnitFileContents(t *testing.T) {
 func TestUnitFileOmitsUserWhenUnset(t *testing.T) {
 	buf := &bytes.Buffer{}
 	err := unitTemplate.Execute(buf, Definition{
-		Name:             "talkeq-hub",
-		ExecutablePath:   "/opt/talkeq/talkeq-hub",
-		WorkingDirectory: "/opt/talkeq",
+		Name:             "modern-eq-chat-hub",
+		ExecutablePath:   "/opt/modern-eq-chat/modern-eq-chat-hub",
+		WorkingDirectory: "/opt/modern-eq-chat",
 	})
 	if err != nil {
 		t.Fatalf("render unit: %s", err)
@@ -78,16 +78,16 @@ func TestUnitFileOmitsUserWhenUnset(t *testing.T) {
 func TestUnitFileIncludesUserWhenSet(t *testing.T) {
 	buf := &bytes.Buffer{}
 	err := unitTemplate.Execute(buf, Definition{
-		Name:             "talkeq-hub",
-		ExecutablePath:   "/opt/talkeq/talkeq-hub",
-		WorkingDirectory: "/opt/talkeq",
-		User:             "talkeq",
+		Name:             "modern-eq-chat-hub",
+		ExecutablePath:   "/opt/modern-eq-chat/modern-eq-chat-hub",
+		WorkingDirectory: "/opt/modern-eq-chat",
+		User:             "modern-eq-chat",
 	})
 	if err != nil {
 		t.Fatalf("render unit: %s", err)
 	}
 
-	if !strings.Contains(buf.String(), "User=talkeq\n") {
+	if !strings.Contains(buf.String(), "User=modern-eq-chat\n") {
 		t.Errorf("unit does not set the requested user:\n\n%s", buf.String())
 	}
 }

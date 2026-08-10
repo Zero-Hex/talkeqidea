@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xackery/talkeq/registerdb"
-	"github.com/xackery/talkeq/tlog"
-	"github.com/xackery/talkeq/userdb"
+	"github.com/Zero-Hex/modern-eq-chat/registerdb"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/userdb"
 )
 
 func (t *API) registerConfirm(w http.ResponseWriter, r *http.Request) {

@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/relay"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/relay"
 )
 
 // Router decides where an event goes. It holds no sockets and does no I/O,

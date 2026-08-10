@@ -1,7 +1,7 @@
 // Package guard holds the hub's abuse controls: who may connect, how often,
 // and how fast they may talk once they are in.
 //
-// The hub is the one component of a TalkEQ relay exposed to the internet, so
+// The hub is the one component of a Modern EQ Chat relay exposed to the internet, so
 // it is the one that has to assume hostile traffic. Everything here is
 // deliberately in-memory: bans and rate state are cheap to rebuild, and a hub
 // restart clearing them is the correct behavior rather than a limitation.

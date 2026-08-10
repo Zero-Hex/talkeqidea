@@ -1,21 +1,31 @@
-# TalkEQ
+# Modern EQEMU to Discord Chat
 
-[![GoDoc](https://godoc.org/github.com/xackery/talkeq?status.svg)](https://godoc.org/github.com/xackery/talkeq) [![Go Report Card](https://goreportcard.com/badge/github.com/xackery/talkeq)](https://goreportcard.com/report/github.com/xackery/talkeq)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Zero-Hex/modern-eq-chat)](https://goreportcard.com/report/github.com/Zero-Hex/modern-eq-chat)
+[![Build](https://github.com/Zero-Hex/modern-eq-chat/actions/workflows/build.yml/badge.svg)](https://github.com/Zero-Hex/modern-eq-chat/actions/workflows/build.yml)
 
-[![Total alerts](https://img.shields.io/lgtm/alerts/g/xackery/talkeq.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/xackery/talkeq/alerts/)
+Bridges EverQuest server chat to Discord, and links several EQEMU servers to
+each other so players on different servers share one conversation.
 
-[![Platform Tests & Build](https://github.com/xackery/talkeq/actions/workflows/build_workflow.yml/badge.svg?branch=master)](https://github.com/xackery/talkeq/actions/workflows/build_workflow.yml)
+A fork of [TalkEQ](https://github.com/xackery/talkeq) by xackery, which in turn
+extends [DiscordEQ](https://github.com/xackery/discordeq). This fork adds
+cross-server chat, a hub-and-agent deployment model, hardening, Windows and
+Linux service installation, and a local management interface.
 
-TalkEQ bridges links between everquest and other services. Extends [DiscordEQ](https://github.com/xackery/discordeq).
+### Upgrading from TalkEQ
+
+Put the new binary in the same directory and run it. It renames `talkeq.conf`
+and the `talkeq_*` data files to their new names, rewrites the paths recorded
+inside the config, and tells you what it changed. Join codes issued by a TalkEQ
+hub are still accepted.
 
 ## Setup
 
-* Go to [releases](https://github.com/xackery/talkeq/releases) and download the latest exe or binary for your operating systsem.
+* Go to [releases](https://github.com/Zero-Hex/modern-eq-chat/releases) and download the latest exe or binary for your operating systsem.
 * Go to https://discordapp.com/developers/ and sign in
 * Click New Application the top right area
 * Write anything you wish for the app name, click Create App
-* Start the talkeq executable once. This generates a talkeq.conf file
-* Copy the Application ID into your talkeq.conf's discord client_id section
+* Start the modern-eq-chat executable once. This generates a modern-eq-chat.conf file
+* Copy the Application ID into your modern-eq-chat.conf's discord client_id section
 * On the left pane, click Bot
 * Click the Reset Token button, Yes, do it!
 * Press the copy button in the Token section
@@ -25,14 +35,14 @@ TalkEQ bridges links between everquest and other services. Extends [DiscordEQ](h
 * Open the link and authorize your bot to access your server.
 * Ensure the bot now appears offline on your server's general channel
 
-### Configure TalkEQ
+### Configure Modern EQ Chat
 
-* Start talkeq up. The first run, it will say `a new talkeq.conf file was created. Please open this file and configure talkeq, then run it again.`.
-* Edit the talkeq.conf, walking through each section and applying it for your situation. There are comments that help you through the process.
+* Start modern-eq-chat up. The first run, it will say `a new modern-eq-chat.conf file was created. Please open this file and configure modern-eq-chat, then run it again.`.
+* Edit the modern-eq-chat.conf, walking through each section and applying it for your situation. There are comments that help you through the process.
 
 ## Cross-Server Chat (Relay)
 
-TalkEQ can link several EQEMU servers so that chat on one is visible on the
+Modern EQ Chat can link several EQEMU servers so that chat on one is visible on the
 others, with Discord mirroring all of it. When Soandso says something in OOC on
 server 1:
 
@@ -47,14 +57,14 @@ connected server.
 
 ### How it fits together
 
-There are two programs. **`talkeq-hub`** runs on one box and holds the Discord
-bot, the routing rules, and the list of authorized servers. **`talkeq-agent`**
+There are two programs. **`modern-eq-chat-hub`** runs on one box and holds the Discord
+bot, the routing rules, and the list of authorized servers. **`modern-eq-chat-agent`**
 runs on each game server, reports its chat, and injects what comes back.
 
 ```
-   server 1 (talkeq-agent) --+
-   server 2 (talkeq-agent) --+-- talkeq-hub -- Discord
-   server 3 (talkeq-agent) --+
+   server 1 (modern-eq-chat-agent) --+
+   server 2 (modern-eq-chat-agent) --+-- modern-eq-chat-hub -- Discord
+   server 3 (modern-eq-chat-agent) --+
 ```
 
 Agents dial **out** to the hub and hold the connection open. That means:
@@ -67,13 +77,13 @@ Agents dial **out** to the hub and hold the connection open. That means:
 
 The hub can also be a game server itself; its setup asks.
 
-The original `talkeq` binary is unchanged and still runs a single server on its
+The original `modern-eq-chat` binary is unchanged and still runs a single server on its
 own. Cross-server chat is opt-in.
 
 ### Setting up the hub
 
-Run `talkeq-hub` on the box that will host your Discord bot. With no config
-present it walks you through setup, or run `talkeq-hub setup` to reconfigure.
+Run `modern-eq-chat-hub` on the box that will host your Discord bot. With no config
+present it walks you through setup, or run `modern-eq-chat-hub setup` to reconfigure.
 
 It asks for your Discord bot credentials, the OOC channel, which port to
 listen on, and the address agents should dial. At the end it prints the
@@ -92,7 +102,7 @@ Keep that handy; each agent shows it during setup and asks you to confirm.
 On the hub:
 
 ```
-$ talkeq-hub enroll server2 "Classic"
+$ modern-eq-chat-hub enroll server2 "Classic"
 
 Enrollment code for Classic:
 
@@ -101,7 +111,7 @@ Enrollment code for Classic:
     Fingerprint:      1d29bcd193...
 ```
 
-Then on the game server, run `talkeq-agent`. It asks for the hub address and
+Then on the game server, run `modern-eq-chat-agent`. It asks for the hub address and
 that code, shows the fingerprint it received, and asks you to confirm it
 matches what the hub printed. Once confirmed it receives its permanent
 credentials, writes its config, and is ready to run.
@@ -112,17 +122,17 @@ an agent to enroll.
 Other hub commands:
 
 ```
-talkeq-hub status                  # configured servers and when they last connected
-talkeq-hub web password            # set up the local management interface
-talkeq-hub enroll list             # outstanding codes
-talkeq-hub enroll revoke <id>      # cancel a code
-talkeq-hub agent list              # authorized servers
-talkeq-hub agent rotate server2    # new token, invalidates the old one
-talkeq-hub agent disable server2   # temporarily block
-talkeq-hub agent remove server2    # revoke
+modern-eq-chat-hub status                  # configured servers and when they last connected
+modern-eq-chat-hub web password            # set up the local management interface
+modern-eq-chat-hub enroll list             # outstanding codes
+modern-eq-chat-hub enroll revoke <id>      # cancel a code
+modern-eq-chat-hub agent list              # authorized servers
+modern-eq-chat-hub agent rotate server2    # new token, invalidates the old one
+modern-eq-chat-hub agent disable server2   # temporarily block
+modern-eq-chat-hub agent remove server2    # revoke
 ```
 
-For scripted installs, `talkeq-hub agent add <key> [name]` prints a join code
+For scripted installs, `modern-eq-chat-hub agent add <key> [name]` prints a join code
 that can be dropped into a provisioning template instead, skipping the
 interactive enrollment.
 
@@ -147,7 +157,7 @@ wording stay independent. The hub side is `discord_pattern` under
 
 * **Per-agent tokens.** Each server gets its own, so one can be revoked without
   re-keying the others. The hub stores argon2id hashes only, so a leaked
-  `talkeq_agents.json` grants nothing.
+  `modern-eq-chat-agents.json` grants nothing.
 * **Identity follows the token.** The hub stamps the originating server from
   whichever token authenticated, ignoring whatever name the agent claims. An
   agent cannot post as another server.
@@ -205,11 +215,11 @@ for outbound connections, and binding a service there can collide with it.
 Both programs install themselves on Windows and Linux:
 
 ```
-talkeq-hub service install     # or talkeq-agent service install
-talkeq-hub service start
-talkeq-hub service status
-talkeq-hub service stop
-talkeq-hub service uninstall
+modern-eq-chat-hub service install     # or modern-eq-chat-agent service install
+modern-eq-chat-hub service start
+modern-eq-chat-hub service status
+modern-eq-chat-hub service stop
+modern-eq-chat-hub service uninstall
 ```
 
 Installing needs `sudo` on Linux and "Run as administrator" on Windows; the
@@ -227,7 +237,7 @@ your container runtime's restart policy there.
 **Windows** registers with the Service Control Manager, starts automatically,
 and restarts on failure. Because Windows starts services in
 `C:\Windows\System32` with no way to configure otherwise, the binary changes
-to its own directory at startup; `talkeq.conf`, the certificate, the roster and
+to its own directory at startup; `modern-eq-chat.conf`, the certificate, the roster and
 the log all live beside the executable.
 
 **macOS and BSD** have no service integration. The relay runs fine; set up
@@ -238,8 +248,8 @@ launchd or rc.d yourself.
 Only the hub needs an open port. Agents dial out.
 
 ```
-talkeq-hub firewall            # show the command for this machine
-talkeq-hub firewall --apply    # run it
+modern-eq-chat-hub firewall            # show the command for this machine
+modern-eq-chat-hub firewall --apply    # run it
 ```
 
 It detects `netsh` on Windows and `ufw` or `firewalld` on Linux, and prints
@@ -252,15 +262,15 @@ the box sits behind a router or a cloud security group, that rule matters too.
 The hub can serve a local web interface for day-to-day management:
 
 ```
-talkeq-hub web password    # set the admin password and enable it
-talkeq-hub web status
-talkeq-hub web disable
+modern-eq-chat-hub web password    # set the admin password and enable it
+modern-eq-chat-hub web status
+modern-eq-chat-hub web disable
 ```
 
 It shows connected servers with live player counts and health, and lets you
 rename servers, enable, disable or remove them, generate enrollment codes, and
 edit channel routing. Channel changes apply to the running hub immediately and
-are written to `talkeq.conf`, so they survive a restart. Changing the Discord
+are written to `modern-eq-chat.conf`, so they survive a restart. Changing the Discord
 bot token still needs one.
 
 **Test** on a server sends a probe and reports the round trip, whether that
@@ -286,7 +296,7 @@ code execution on your servers behind one password. The hub logs a warning if
 you point `listen` at a non-loopback address anyway.
 
 Other protections: argon2id password hash (the password itself is never
-written to `talkeq.conf`), session cookies that are `HttpOnly` and
+written to `modern-eq-chat.conf`), session cookies that are `HttpOnly` and
 `SameSite=Strict`, a CSRF token on every mutating request, rate-limited logins
 with the same escalating block the relay port uses, and a strict content
 security policy. The whole UI is embedded in the binary, so nothing loads from
@@ -324,33 +334,33 @@ counts upward so the Discord bot status shows a total across every server.
 
 #### Using Users Database
 
-* When talkeq runs, a users.txt file is generated the same directory as talkeq. Peek at the file to see the layout.
-* If you write to this file, talkeq will hot reload the contents and update it's lookup table in memory for mapping users from discord to telnet (eq)
-* You can write a website to edit this file, or by hand, to update talkeq and sync your player IGN tags
+* When modern-eq-chat runs, a users.txt file is generated the same directory as modern-eq-chat. Peek at the file to see the layout.
+* If you write to this file, modern-eq-chat will hot reload the contents and update it's lookup table in memory for mapping users from discord to telnet (eq)
+* You can write a website to edit this file, or by hand, to update modern-eq-chat and sync your player IGN tags
 
 ### Troubleshooting
 
 - **I can talk from in game to discord, but messages in discord to in game fail with "message too small, ignoring, original message:"**: Double check the bot section, and toggle the Message Content Intent option. If this is disabled, the bot just sees empty content messages and fails.
 
-/etc/init.d/talkeq
+/etc/init.d/modern-eq-chat
 change APPDIR/APPBIN, user, and group to your set options
 ```sh
 !/bin/sh
 
 ### BEGIN INIT INFO
-# Provides:          talkeqdaemon
+# Provides:          modern-eq-chatdaemon
 # Required-Start:    $local_fs $network $syslog
 # Required-Stop:     $local_fs $network $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: TalkEQ
-# Description:       TalkEQ start-stop-daemon - Debian
+# Short-Description: Modern EQ Chat
+# Description:       Modern EQ Chat start-stop-daemon - Debian
 ### END INIT INFO
 
-NAME="talkeq"
+NAME="modern-eq-chat"
 PATH="/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin"
-APPDIR="/home/eqemu/talkeq/"
-APPBIN="/home/eqemu/talkeq/talkeq"
+APPDIR="/home/eqemu/modern-eq-chat/"
+APPBIN="/home/eqemu/modern-eq-chat/modern-eq-chat"
 APPARGS=""
 USER="eqemu"
 GROUP="eqemu"
@@ -361,7 +371,7 @@ set -e
 
 start() {
   printf "Starting '$NAME'... "
-  start-stop-daemon --start --chuid "$USER:$GROUP" --background --make-pidfile --pidfile /var/run/$NAME.pid --chdir "$APPDIR" --startas /bin/bash -- -c "exec $APPBIN > /var/log/talkeq.log 2>&1"
+  start-stop-daemon --start --chuid "$USER:$GROUP" --background --make-pidfile --pidfile /var/run/$NAME.pid --chdir "$APPDIR" --startas /bin/bash -- -c "exec $APPBIN > /var/log/modern-eq-chat.log 2>&1"
   printf "done\n"
 }
 #We need this function to ensure the whole process tree will be killed

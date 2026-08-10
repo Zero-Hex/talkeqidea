@@ -5,14 +5,14 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/service"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/service"
 )
 
 // serviceName is how the hub registers with systemd or the Windows SCM.
-const serviceName = "talkeq-hub"
+const serviceName = "modern-eq-chat-hub"
 
-// runServiceCommand implements `talkeq-hub service ...`.
+// runServiceCommand implements `modern-eq-chat-hub service ...`.
 func runServiceCommand(args []string) error {
 	manager, err := service.NewManager()
 	if err != nil {
@@ -58,12 +58,12 @@ func runServiceCommand(args []string) error {
 
 func serviceInstall(manager service.Manager) error {
 	if !config.Exists(config.DefaultPath) {
-		return fmt.Errorf("no %s found - run 'talkeq-hub setup' before installing the service", config.DefaultPath)
+		return fmt.Errorf("no %s found - run 'modern-eq-chat-hub setup' before installing the service", config.DefaultPath)
 	}
 
 	def, err := service.Prepare(service.Definition{
 		Name:        serviceName,
-		DisplayName: "TalkEQ Hub",
+		DisplayName: "Modern EQ Chat Hub",
 		Description: "Relays EverQuest chat between game servers and Discord.",
 	})
 	if err != nil {
@@ -80,7 +80,7 @@ func serviceInstall(manager service.Manager) error {
 	fmt.Printf("\n")
 	fmt.Printf("Config, certificates and logs are read from and written to the\n")
 	fmt.Printf("working directory above.\n\n")
-	fmt.Printf("Start it with: talkeq-hub service start\n\n")
+	fmt.Printf("Start it with: modern-eq-chat-hub service start\n\n")
 
 	printFirewallGuidance()
 	return nil
@@ -94,7 +94,7 @@ func serviceStatus(manager service.Manager) error {
 
 	if !status.IsInstalled {
 		fmt.Printf("%s is not installed as a %s service.\n", serviceName, manager.Kind())
-		fmt.Printf("Install it with: talkeq-hub service install\n")
+		fmt.Printf("Install it with: modern-eq-chat-hub service install\n")
 		return nil
 	}
 
@@ -123,10 +123,10 @@ func printFirewallGuidance() {
 
 	fmt.Printf("Firewall: agents need inbound TCP %d. To open it with %s:\n\n", port, plan.Tool)
 	fmt.Printf("    %s\n\n", plan.String())
-	fmt.Printf("Run 'talkeq-hub firewall --apply' to do that for you.\n\n")
+	fmt.Printf("Run 'modern-eq-chat-hub firewall --apply' to do that for you.\n\n")
 }
 
-// runFirewallCommand implements `talkeq-hub firewall [--apply]`.
+// runFirewallCommand implements `modern-eq-chat-hub firewall [--apply]`.
 func runFirewallCommand(args []string) error {
 	port := configuredPort()
 	plan := service.PlanFirewall(port, serviceName)
@@ -186,7 +186,7 @@ func configuredPort() int {
 }
 
 func usageService(manager service.Manager) error {
-	fmt.Printf("usage: talkeq-hub service <command>\n\n")
+	fmt.Printf("usage: modern-eq-chat-hub service <command>\n\n")
 	fmt.Printf("Manages the hub as a %s service so it survives reboots.\n\n", manager.Kind())
 	fmt.Println("  install     register the service and enable it at boot")
 	fmt.Println("  uninstall   stop and remove it")

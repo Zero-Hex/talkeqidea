@@ -1,4 +1,4 @@
-// Package service installs, removes and controls TalkEQ as a background
+// Package service installs, removes and controls Modern EQ Chat as a background
 // service on Windows and Linux.
 //
 // Running under a service manager is what makes an unattended relay actually
@@ -19,7 +19,7 @@ import (
 
 // Definition describes a service to install.
 type Definition struct {
-	// Name is the service identifier, e.g. "talkeq-hub".
+	// Name is the service identifier, e.g. "modern-eq-chat-hub".
 	Name string
 	// DisplayName is shown in service managers.
 	DisplayName string
@@ -29,7 +29,7 @@ type Definition struct {
 	ExecutablePath string
 	// WorkingDirectory is where the service runs.
 	//
-	// This matters more than it looks: talkeq.conf, the roster, the
+	// This matters more than it looks: modern-eq-chat.conf, the roster, the
 	// certificate and the log are all resolved relative to the working
 	// directory. A service manager would otherwise start the process in / or
 	// C:\Windows\System32, where none of them exist.

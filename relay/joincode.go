@@ -13,7 +13,12 @@ import (
 // forget the pin, which is the mistake that would silently downgrade the
 // connection's security.
 
-const joinCodePrefix = "talkeq1_"
+const joinCodePrefix = "meqc1_"
+
+// legacyJoinCodePrefix is what the project emitted before it was renamed.
+// Still accepted so an operator midway through adding a server is not stranded
+// by upgrading the hub.
+const legacyJoinCodePrefix = "talkeq1_"
 
 // JoinCode carries everything an agent needs to reach its hub.
 type JoinCode struct {
@@ -41,10 +46,18 @@ func (j *JoinCode) Encode() (string, error) {
 // ParseJoinCode reads a join code produced by Encode.
 func ParseJoinCode(s string) (*JoinCode, error) {
 	s = strings.TrimSpace(s)
-	if !strings.HasPrefix(s, joinCodePrefix) {
-		return nil, fmt.Errorf("not a talkeq join code (expected %s prefix)", joinCodePrefix)
+
+	body := ""
+	switch {
+	case strings.HasPrefix(s, joinCodePrefix):
+		body = strings.TrimPrefix(s, joinCodePrefix)
+	case strings.HasPrefix(s, legacyJoinCodePrefix):
+		body = strings.TrimPrefix(s, legacyJoinCodePrefix)
+	default:
+		return nil, fmt.Errorf("not a join code (expected a %s prefix)", joinCodePrefix)
 	}
-	buf, err := base64.RawURLEncoding.DecodeString(strings.TrimPrefix(s, joinCodePrefix))
+
+	buf, err := base64.RawURLEncoding.DecodeString(body)
 	if err != nil {
 		return nil, fmt.Errorf("decode join code: %w", err)
 	}

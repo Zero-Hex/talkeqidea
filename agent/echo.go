@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xackery/talkeq/relay"
+	"github.com/Zero-Hex/modern-eq-chat/relay"
 )
 
 // echoCache is the agent's guard against relaying back a message it just

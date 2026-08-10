@@ -1,4 +1,4 @@
-// Package relay defines the wire protocol shared by the TalkEQ hub and its
+// Package relay defines the wire protocol shared by the Modern EQ Chat hub and its
 // agents.
 //
 // The protocol is deliberately small. An agent reports who said something,

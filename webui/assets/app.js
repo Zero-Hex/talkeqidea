@@ -1,4 +1,4 @@
-// TalkEQ hub management interface.
+// Modern EQ Chat hub management interface.
 //
 // Plain DOM, no framework and no build step, so the whole UI ships inside the
 // binary and the content security policy can forbid every external source.
@@ -14,7 +14,7 @@ let csrf = '';
 
 async function api(path, options = {}) {
   const headers = { 'Content-Type': 'application/json' };
-  if (csrf) headers['X-TalkEQ-CSRF'] = csrf;
+  if (csrf) headers['X-MEQC-CSRF'] = csrf;
 
   const response = await fetch(path, {
     ...options,
@@ -307,7 +307,7 @@ function showCode(container, data, heading) {
   const lines = [`Hub address: ${data.hub_address}`];
   if (data.expires_in) lines.push(`Expires in ${data.expires_in}, single use`);
   if (data.note) lines.push(data.note);
-  lines.push('Run talkeq-agent on that server and enter the address and code.');
+  lines.push('Run modern-eq-chat-agent on that server and enter the address and code.');
 
   for (const line of lines) {
     box.append(el('div', 'muted', line));

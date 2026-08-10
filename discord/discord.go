@@ -12,10 +12,10 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/request"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 	"github.com/bwmarrin/discordgo"
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/request"
-	"github.com/xackery/talkeq/tlog"
 )
 
 const (
@@ -61,15 +61,15 @@ func New(ctx context.Context, config config.Discord) (*Discord, error) {
 	}
 
 	if config.ClientID == "" {
-		return nil, fmt.Errorf("client_id must be set. Visit https://github.com/xackery/talkeq to learn more")
+		return nil, fmt.Errorf("client_id must be set. Visit https://github.com/Zero-Hex/modern-eq-chat to learn more")
 	}
 
 	if config.Token == "" {
-		return nil, fmt.Errorf("bot_token must be set. Visit https://github.com/xackery/talkeq to learn more")
+		return nil, fmt.Errorf("bot_token must be set. Visit https://github.com/Zero-Hex/modern-eq-chat to learn more")
 	}
 
 	if config.ServerID == "" {
-		return nil, fmt.Errorf("server_id must be set. On discord, right click your server's icon on very left, and Copy ID, and place it in talkeq.conf in the server_id section")
+		return nil, fmt.Errorf("server_id must be set. On discord, right click your server's icon on very left, and Copy ID, and place it in modern-eq-chat.conf in the server_id section")
 	}
 
 	return t, nil
@@ -100,7 +100,7 @@ func (t *Discord) Connect(ctx context.Context) error {
 		return fmt.Errorf("new: %w", err)
 	}
 
-	// Ask for exactly the gateway intents TalkEQ uses.
+	// Ask for exactly the gateway intents Modern EQ Chat uses.
 	//
 	// discordgo defaults to IntentsAllWithoutPrivileged, which does NOT include
 	// message content. Since Discord's September 2022 change a bot that does
@@ -127,7 +127,7 @@ func (t *Discord) Connect(ctx context.Context) error {
 		if strings.Contains(strings.ToLower(err.Error()), "disallowed intent") {
 			return fmt.Errorf("discord rejected the message content intent: turn on "+
 				"'Message Content Intent' at https://discord.com/developers/ under your "+
-				"application's Bot page, then start talkeq again (%w)", err)
+				"application's Bot page, then start modern-eq-chat again (%w)", err)
 		}
 		return fmt.Errorf("open: %w", err)
 	}

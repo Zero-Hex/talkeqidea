@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/relay"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/relay"
 )
 
 func testHubConfig(t *testing.T) *config.HubConfig {

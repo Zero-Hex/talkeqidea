@@ -7,10 +7,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Zero-Hex/modern-eq-chat/guard"
+	"github.com/Zero-Hex/modern-eq-chat/relay"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 	"github.com/gorilla/websocket"
-	"github.com/xackery/talkeq/guard"
-	"github.com/xackery/talkeq/relay"
-	"github.com/xackery/talkeq/tlog"
 )
 
 const (

@@ -7,10 +7,10 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/xackery/talkeq/hub"
+	"github.com/Zero-Hex/modern-eq-chat/hub"
 )
 
-// runAgentCommand implements the `talkeq-hub agent ...` subcommands used to manage
+// runAgentCommand implements the `modern-eq-chat-hub agent ...` subcommands used to manage
 // which servers may join the relay.
 //
 // These run against the roster file directly rather than talking to a running
@@ -30,7 +30,7 @@ func runAgentCommand(args []string) error {
 	switch args[0] {
 	case "add":
 		if len(args) < 2 {
-			return fmt.Errorf("usage: talkeq-hub agent add <server-key> [short-name]")
+			return fmt.Errorf("usage: modern-eq-chat-hub agent add <server-key> [short-name]")
 		}
 		shortName := ""
 		if len(args) > 2 {
@@ -43,13 +43,13 @@ func runAgentCommand(args []string) error {
 
 	case "rotate":
 		if len(args) < 2 {
-			return fmt.Errorf("usage: talkeq-hub agent rotate <server-key>")
+			return fmt.Errorf("usage: modern-eq-chat-hub agent rotate <server-key>")
 		}
 		return agentRotate(h, args[1])
 
 	case "remove":
 		if len(args) < 2 {
-			return fmt.Errorf("usage: talkeq-hub agent remove <server-key>")
+			return fmt.Errorf("usage: modern-eq-chat-hub agent remove <server-key>")
 		}
 		if err := h.Roster().Remove(args[1]); err != nil {
 			return err
@@ -59,7 +59,7 @@ func runAgentCommand(args []string) error {
 
 	case "disable":
 		if len(args) < 2 {
-			return fmt.Errorf("usage: talkeq-hub agent disable <server-key>")
+			return fmt.Errorf("usage: modern-eq-chat-hub agent disable <server-key>")
 		}
 		if err := h.Roster().SetEnabled(args[1], false); err != nil {
 			return err
@@ -69,7 +69,7 @@ func runAgentCommand(args []string) error {
 
 	case "enable":
 		if len(args) < 2 {
-			return fmt.Errorf("usage: talkeq-hub agent enable <server-key>")
+			return fmt.Errorf("usage: modern-eq-chat-hub agent enable <server-key>")
 		}
 		if err := h.Roster().SetEnabled(args[1], true); err != nil {
 			return err
@@ -98,7 +98,7 @@ func agentAdd(h *hub.Hub, serverKey, shortName string) error {
 	}
 
 	fmt.Printf("\nAdded agent %s.\n\n", serverKey)
-	fmt.Printf("On that server, set this in talkeq.conf:\n\n")
+	fmt.Printf("On that server, set this in modern-eq-chat.conf:\n\n")
 	fmt.Printf("  [relay]\n")
 	fmt.Printf("  mode = \"agent\"\n\n")
 	fmt.Printf("  [relay.agent]\n")
@@ -109,12 +109,12 @@ func agentAdd(h *hub.Hub, serverKey, shortName string) error {
 	if strings.HasPrefix(h.Addr(), ":") || strings.HasPrefix(h.Addr(), "0.0.0.0:") {
 		fmt.Printf("NOTE: the join code points at %q, which agents on other boxes cannot dial.\n", h.Addr())
 		fmt.Printf("      Set advertise_address in [relay.hub] to this hub's reachable host:port,\n")
-		fmt.Printf("      then re-run 'talkeq-hub agent rotate %s' for a corrected code.\n\n", serverKey)
+		fmt.Printf("      then re-run 'modern-eq-chat-hub agent rotate %s' for a corrected code.\n\n", serverKey)
 	}
 
 	fmt.Printf("The join code carries the hub address, this agent's token and the\n")
 	fmt.Printf("certificate fingerprint. It is shown once and cannot be recovered -\n")
-	fmt.Printf("run 'talkeq-hub agent rotate %s' to issue a new one.\n\n", serverKey)
+	fmt.Printf("run 'modern-eq-chat-hub agent rotate %s' to issue a new one.\n\n", serverKey)
 	return nil
 }
 
@@ -140,7 +140,7 @@ func agentRotate(h *hub.Hub, serverKey string) error {
 func agentList(h *hub.Hub) error {
 	entries := h.Roster().Entries()
 	if len(entries) == 0 {
-		fmt.Println("no agents registered. add one with: talkeq-hub agent add <server-key> [short-name]")
+		fmt.Println("no agents registered. add one with: modern-eq-chat-hub agent add <server-key> [short-name]")
 		return nil
 	}
 
@@ -161,7 +161,7 @@ func agentList(h *hub.Hub) error {
 }
 
 func usageAgent() error {
-	fmt.Println("usage: talkeq-hub agent <command>")
+	fmt.Println("usage: modern-eq-chat-hub agent <command>")
 	fmt.Println()
 	fmt.Println("  add <server-key> [short-name]   authorize a server and print its join code")
 	fmt.Println("  list                            show authorized servers")

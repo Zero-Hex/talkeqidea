@@ -7,8 +7,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/hub"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/hub"
 )
 
 // openHub loads the configuration and prepares a hub for administrative use,
@@ -18,7 +18,7 @@ import (
 // not the hub is running; both sides reload when the other writes.
 func openHub() (*hub.Hub, error) {
 	if !config.Exists(config.DefaultPath) {
-		return nil, fmt.Errorf("no %s found - run 'talkeq-hub setup' first", config.DefaultPath)
+		return nil, fmt.Errorf("no %s found - run 'modern-eq-chat-hub setup' first", config.DefaultPath)
 	}
 
 	cfg, err := config.Load(config.DefaultPath)
@@ -29,7 +29,7 @@ func openHub() (*hub.Hub, error) {
 		return nil, fmt.Errorf("relay config: %w", err)
 	}
 	if cfg.Relay.Mode != config.ModeHub {
-		return nil, fmt.Errorf("this command runs on the hub, but relay.mode is %q in talkeq.conf", cfg.Relay.Mode)
+		return nil, fmt.Errorf("this command runs on the hub, but relay.mode is %q in modern-eq-chat.conf", cfg.Relay.Mode)
 	}
 
 	h, err := hub.New(context.Background(), cfg.Relay.Hub)
@@ -39,7 +39,7 @@ func openHub() (*hub.Hub, error) {
 	return h, nil
 }
 
-// runEnrollCommand implements `talkeq-hub enroll ...`.
+// runEnrollCommand implements `modern-eq-chat-hub enroll ...`.
 func runEnrollCommand(args []string) error {
 	h, err := openHub()
 	if err != nil {
@@ -56,7 +56,7 @@ func runEnrollCommand(args []string) error {
 
 	case "revoke":
 		if len(args) < 2 {
-			return fmt.Errorf("usage: talkeq-hub enroll revoke <id>")
+			return fmt.Errorf("usage: modern-eq-chat-hub enroll revoke <id>")
 		}
 		if err := h.Enroll().Revoke(args[1]); err != nil {
 			return err
@@ -99,7 +99,7 @@ func enrollCreate(h *hub.Hub, serverKey, shortName string) error {
 		fmt.Printf("    Fingerprint:      %s\n", fingerprint)
 	}
 	fmt.Printf("\n")
-	fmt.Printf("On that server run 'talkeq-agent' and enter the address and code.\n")
+	fmt.Printf("On that server run 'modern-eq-chat-agent' and enter the address and code.\n")
 	fmt.Printf("It will show the fingerprint and ask you to confirm it matches.\n")
 	fmt.Printf("\nThe code works once and expires in %s. The hub must be running\n", hub.DefaultEnrollTTL)
 	fmt.Printf("for the agent to enroll.\n\n")
@@ -134,7 +134,7 @@ func enrollList(h *hub.Hub) error {
 }
 
 func usageEnroll() error {
-	fmt.Println("usage: talkeq-hub enroll <server-key> [display name]")
+	fmt.Println("usage: modern-eq-chat-hub enroll <server-key> [display name]")
 	fmt.Println()
 	fmt.Println("Issues a short, single-use code that a new server enters during its")
 	fmt.Println("own setup to receive its permanent credentials.")
@@ -156,7 +156,7 @@ func runStatusCommand() error {
 	if len(entries) == 0 {
 		fmt.Println("no servers authorized yet")
 		fmt.Println()
-		fmt.Println("add one with: talkeq-hub enroll <server-key> [display name]")
+		fmt.Println("add one with: modern-eq-chat-hub enroll <server-key> [display name]")
 		return nil
 	}
 

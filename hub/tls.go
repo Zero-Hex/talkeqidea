@@ -16,8 +16,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 )
 
 // certificateFor builds the TLS configuration for the hub listener.
@@ -125,7 +125,7 @@ func generateSelfSigned() (certPEM []byte, keyPEM []byte, err error) {
 
 	tmpl := x509.Certificate{
 		SerialNumber: serial,
-		Subject:      pkix.Name{CommonName: "talkeq-hub"},
+		Subject:      pkix.Name{CommonName: "modern-eq-chat-hub"},
 		NotBefore:    time.Now().Add(-time.Hour),
 		// Ten years: agents pin the fingerprint, so expiry buys nothing here
 		// and a surprise expiry would take the whole relay down at once.
@@ -134,7 +134,7 @@ func generateSelfSigned() (certPEM []byte, keyPEM []byte, err error) {
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
 		IsCA:                  true,
-		DNSNames:              []string{"talkeq-hub", "localhost"},
+		DNSNames:              []string{"modern-eq-chat-hub", "localhost"},
 		IPAddresses:           []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
 	}
 

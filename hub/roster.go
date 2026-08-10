@@ -9,16 +9,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xackery/talkeq/relay"
-	"github.com/xackery/talkeq/sanitize"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/relay"
+	"github.com/Zero-Hex/modern-eq-chat/sanitize"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 )
 
 // Roster is the hub's record of which agents are allowed to connect.
 //
 // It holds argon2id hashes, never tokens, so the file can be backed up or
 // read by an operator without handing out relay access. It is managed through
-// the `talkeq agent` subcommands rather than hand-edited, which is why it is
+// the `modern-eq-chat agent` subcommands rather than hand-edited, which is why it is
 // JSON rather than the commented TOML used for operator-facing config.
 type Roster struct {
 	mu      sync.RWMutex
@@ -49,7 +49,7 @@ type rosterFile struct {
 // NewRoster loads the roster at path, creating an empty one if absent.
 func NewRoster(path string) (*Roster, error) {
 	if path == "" {
-		path = "talkeq_agents.json"
+		path = "modern-eq-chat-agents.json"
 	}
 	r := &Roster{
 		path:    path,
@@ -355,7 +355,7 @@ func (r *Roster) saveLocked() error {
 	}
 
 	dir := filepath.Dir(r.path)
-	tmp, err := os.CreateTemp(dir, ".talkeq_agents-*.tmp")
+	tmp, err := os.CreateTemp(dir, ".modern-eq-chat-agents-*.tmp")
 	if err != nil {
 		return fmt.Errorf("create temp roster: %w", err)
 	}

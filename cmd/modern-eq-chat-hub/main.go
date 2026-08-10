@@ -1,4 +1,4 @@
-// Command talkeq-hub runs the central relay hub: the box that holds the
+// Command modern-eq-chat-hub runs the central relay hub: the box that holds the
 // Discord bot, routes chat between game servers, and authorizes agents.
 package main
 
@@ -8,11 +8,11 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/xackery/talkeq/client"
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/service"
-	"github.com/xackery/talkeq/setup"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/client"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/service"
+	"github.com/Zero-Hex/modern-eq-chat/setup"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 )
 
 // Version is set at build time.
@@ -33,8 +33,10 @@ func main() {
 func run() error {
 	args := os.Args[1:]
 
+	migrateLegacyFiles()
+
 	// Administrative subcommands log to the console only. They are short-lived
-	// and should not contend with a running hub for talkeq.log.
+	// and should not contend with a running hub for modern-eq-chat.log.
 	if len(args) > 0 {
 		tlog.Init(nil, os.Stdout)
 
@@ -56,7 +58,7 @@ func run() error {
 		case "web":
 			return runWebCommand(args[1:])
 		case "version", "--version", "-v":
-			fmt.Printf("talkeq-hub %s\n", Version)
+			fmt.Printf("modern-eq-chat-hub %s\n", Version)
 			return nil
 		case "help", "--help", "-h":
 			usage()
@@ -88,21 +90,21 @@ func run() error {
 // it this way means one code path serves a console run and a service run.
 func serve() error {
 	return service.Run(serviceName, func(stop <-chan struct{}) error {
-		w, err := os.Create("talkeq.log")
+		w, err := os.Create("modern-eq-chat.log")
 		if err != nil {
 			return fmt.Errorf("create log: %w", err)
 		}
 		defer w.Close()
 		tlog.Init(w, os.Stdout)
 
-		tlog.Infof("starting talkeq-hub %s", Version)
+		tlog.Infof("starting modern-eq-chat-hub %s", Version)
 
 		cfg, err := config.Load(config.DefaultPath)
 		if err != nil {
 			return fmt.Errorf("config: %w", err)
 		}
 		if cfg.Relay.Mode != config.ModeHub {
-			return fmt.Errorf("talkeq.conf has relay.mode = %q; run 'talkeq-hub setup' to configure this box as a hub", cfg.Relay.Mode)
+			return fmt.Errorf("modern-eq-chat.conf has relay.mode = %q; run 'modern-eq-chat-hub setup' to configure this box as a hub", cfg.Relay.Mode)
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -134,18 +136,35 @@ func serve() error {
 // memory, so this only reports how to clear one.
 func runUnbanCommand(args []string) error {
 	if len(args) < 1 {
-		return fmt.Errorf("usage: talkeq-hub unban <address>")
+		return fmt.Errorf("usage: modern-eq-chat-hub unban <address>")
 	}
 	fmt.Printf("Blocks are held in memory by the running hub and are cleared by\n")
 	fmt.Printf("restarting it:\n\n")
-	fmt.Printf("    talkeq-hub service stop && talkeq-hub service start\n\n")
+	fmt.Printf("    modern-eq-chat-hub service stop && modern-eq-chat-hub service start\n\n")
 	fmt.Printf("To stop %s being blocked again, add it to allowed_networks in\n", args[0])
-	fmt.Printf("talkeq.conf, or raise auth_failures_before_ban.\n")
+	fmt.Printf("modern-eq-chat.conf, or raise auth_failures_before_ban.\n")
 	return nil
 }
 
+// migrateLegacyFiles moves a pre-rename installation onto the current
+// filenames, reporting anything it changed.
+//
+// This runs before any command, including setup: an operator upgrading from
+// TalkEQ should find their existing configuration picked up, not be dropped
+// into a fresh setup wizard because the file is named differently now.
+func migrateLegacyFiles() {
+	actions, err := config.Migrate(config.DefaultPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not migrate files from the previous name: %s\n", err)
+		return
+	}
+	for _, action := range actions {
+		fmt.Printf("migrated: %s\n", action)
+	}
+}
+
 func usage() {
-	fmt.Println("usage: talkeq-hub [command]")
+	fmt.Println("usage: modern-eq-chat-hub [command]")
 	fmt.Println()
 	fmt.Println("With no command, runs the hub.")
 	fmt.Println()

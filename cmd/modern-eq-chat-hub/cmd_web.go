@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/setup"
-	"github.com/xackery/talkeq/webui"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/setup"
+	"github.com/Zero-Hex/modern-eq-chat/webui"
 )
 
-// runWebCommand implements `talkeq-hub web ...`.
+// runWebCommand implements `modern-eq-chat-hub web ...`.
 func runWebCommand(args []string) error {
 	if len(args) == 0 {
 		return usageWeb()
@@ -31,7 +31,7 @@ func runWebCommand(args []string) error {
 
 // webSetPassword sets or replaces the admin password.
 //
-// The password is hashed here and only the hash is written, so talkeq.conf
+// The password is hashed here and only the hash is written, so modern-eq-chat.conf
 // never holds the secret even though it holds everything else.
 func webSetPassword() error {
 	cfg, err := config.Load(config.DefaultPath)
@@ -107,7 +107,7 @@ func webSetEnabled(isEnabled bool) error {
 	}
 
 	if isEnabled && cfg.Relay.Hub.Web.PasswordHash == "" {
-		return fmt.Errorf("set a password first: talkeq-hub web password")
+		return fmt.Errorf("set a password first: modern-eq-chat-hub web password")
 	}
 
 	cfg.Relay.Hub.Web.IsEnabled = isEnabled
@@ -132,20 +132,20 @@ func webStatus() error {
 	web := cfg.Relay.Hub.Web
 	if !web.IsEnabled {
 		fmt.Println("Web interface is disabled.")
-		fmt.Println("Enable it with: talkeq-hub web password")
+		fmt.Println("Enable it with: modern-eq-chat-hub web password")
 		return nil
 	}
 
 	fmt.Printf("Web interface is enabled on http://%s\n", web.Listen)
 	if web.PasswordHash == "" {
 		fmt.Println("WARNING: no password is set, so the hub will refuse to serve it.")
-		fmt.Println("Set one with: talkeq-hub web password")
+		fmt.Println("Set one with: modern-eq-chat-hub web password")
 	}
 	return nil
 }
 
 func usageWeb() error {
-	fmt.Println("usage: talkeq-hub web <command>")
+	fmt.Println("usage: modern-eq-chat-hub web <command>")
 	fmt.Println()
 	fmt.Println("The management interface binds to this machine only. Reach it from")
 	fmt.Println("elsewhere with an SSH tunnel rather than exposing the port.")

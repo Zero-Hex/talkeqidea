@@ -40,14 +40,22 @@ _testmain.go
 
 /*.toml
 
-talkeq_guilds.txt
-talkeq_users.txt
-talkeq.log
+modern-eq-chat-guilds.txt
+modern-eq-chat-users.txt
+modern-eq-chat.log
 
 .DS_Store
 # Relay state written at runtime
-talkeq_agents.json
-talkeq_enroll.json
-talkeq_hub_cert.pem
-talkeq_hub_key.pem
-talkeq.conf.bak
+modern-eq-chat-agents.json
+modern-eq-chat-enroll.json
+modern-eq-chat-cert.pem
+modern-eq-chat-key.pem
+modern-eq-chat.conf.bak
+
+# Leftovers from before the rename, in case an operator upgrades in place
+talkeq.conf
+talkeq_*.json
+talkeq_*.txt
+talkeq_*.pem
+talkeq_*.toml
+talkeq.log

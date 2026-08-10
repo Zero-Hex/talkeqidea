@@ -1,4 +1,4 @@
-// Package agent connects one game server to a TalkEQ hub.
+// Package agent connects one game server to a Modern EQ Chat hub.
 //
 // An agent is deliberately thin. It reports what was said on its own server
 // and injects what the hub sends back. It holds no Discord credentials, no
@@ -19,12 +19,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/relay"
+	"github.com/Zero-Hex/modern-eq-chat/request"
+	"github.com/Zero-Hex/modern-eq-chat/sanitize"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 	"github.com/gorilla/websocket"
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/relay"
-	"github.com/xackery/talkeq/request"
-	"github.com/xackery/talkeq/sanitize"
-	"github.com/xackery/talkeq/tlog"
 )
 
 const (
@@ -524,7 +524,7 @@ func (a *Agent) handleTest(frame *relay.Frame) {
 // operator can confirm the whole path, not just the relay link.
 func (a *Agent) injectTestLine(message string) (bool, string) {
 	if message == "" {
-		message = "TalkEQ relay test"
+		message = "Modern EQ Chat relay test"
 	}
 
 	ch, ok := a.cfg.Channel("ooc")
@@ -532,7 +532,7 @@ func (a *Agent) injectTestLine(message string) (bool, string) {
 		return false, "no enabled ooc channel to inject into"
 	}
 
-	event := relay.NewEvent("ooc", "TalkEQ", sanitize.Message(message))
+	event := relay.NewEvent("ooc", "Modern EQ Chat", sanitize.Message(message))
 	event.Origin = relay.OriginDiscord
 	event.OriginName = "Hub"
 

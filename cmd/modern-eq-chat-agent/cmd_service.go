@@ -3,14 +3,14 @@ package main
 import (
 	"fmt"
 
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/service"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/service"
 )
 
 // serviceName is how the agent registers with systemd or the Windows SCM.
-const serviceName = "talkeq-agent"
+const serviceName = "modern-eq-chat-agent"
 
-// runServiceCommand implements `talkeq-agent service ...`.
+// runServiceCommand implements `modern-eq-chat-agent service ...`.
 func runServiceCommand(args []string) error {
 	manager, err := service.NewManager()
 	if err != nil {
@@ -56,13 +56,13 @@ func runServiceCommand(args []string) error {
 
 func serviceInstall(manager service.Manager) error {
 	if !config.Exists(config.DefaultPath) {
-		return fmt.Errorf("no %s found - run 'talkeq-agent setup' before installing the service", config.DefaultPath)
+		return fmt.Errorf("no %s found - run 'modern-eq-chat-agent setup' before installing the service", config.DefaultPath)
 	}
 
 	def, err := service.Prepare(service.Definition{
 		Name:        serviceName,
-		DisplayName: "TalkEQ Agent",
-		Description: "Relays this EverQuest server's chat to a TalkEQ hub.",
+		DisplayName: "Modern EQ Chat Agent",
+		Description: "Relays this EverQuest server's chat to a Modern EQ Chat hub.",
 	})
 	if err != nil {
 		return err
@@ -76,7 +76,7 @@ func serviceInstall(manager service.Manager) error {
 	fmt.Printf("    Executable:         %s\n", def.ExecutablePath)
 	fmt.Printf("    Working directory:  %s\n", def.WorkingDirectory)
 	fmt.Printf("\n")
-	fmt.Printf("Start it with: talkeq-agent service start\n\n")
+	fmt.Printf("Start it with: modern-eq-chat-agent service start\n\n")
 	// Worth stating plainly, because operators expect to have to do this and
 	// then spend time wondering which port to open.
 	fmt.Printf("No firewall change is needed. The agent dials out to the hub and\n")
@@ -92,7 +92,7 @@ func serviceStatus(manager service.Manager) error {
 
 	if !status.IsInstalled {
 		fmt.Printf("%s is not installed as a %s service.\n", serviceName, manager.Kind())
-		fmt.Printf("Install it with: talkeq-agent service install\n")
+		fmt.Printf("Install it with: modern-eq-chat-agent service install\n")
 		return nil
 	}
 
@@ -109,7 +109,7 @@ func serviceStatus(manager service.Manager) error {
 }
 
 func usageService(manager service.Manager) error {
-	fmt.Printf("usage: talkeq-agent service <command>\n\n")
+	fmt.Printf("usage: modern-eq-chat-agent service <command>\n\n")
 	fmt.Printf("Manages the agent as a %s service so it survives reboots.\n\n", manager.Kind())
 	fmt.Println("  install     register the service and enable it at boot")
 	fmt.Println("  uninstall   stop and remove it")

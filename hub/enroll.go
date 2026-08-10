@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xackery/talkeq/relay"
-	"github.com/xackery/talkeq/sanitize"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/relay"
+	"github.com/Zero-Hex/modern-eq-chat/sanitize"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 )
 
 // EnrollStore holds outstanding enrollment codes.
@@ -65,7 +65,7 @@ func (e *EnrollEntry) IsExpired() bool {
 // NewEnrollStore opens the enrollment store at path.
 func NewEnrollStore(path string) (*EnrollStore, error) {
 	if path == "" {
-		path = "talkeq_enroll.json"
+		path = "modern-eq-chat-enroll.json"
 	}
 	s := &EnrollStore{
 		path:    path,
@@ -267,7 +267,7 @@ func (s *EnrollStore) saveLocked() error {
 	}
 
 	dir := filepath.Dir(s.path)
-	tmp, err := os.CreateTemp(dir, ".talkeq_enroll-*.tmp")
+	tmp, err := os.CreateTemp(dir, ".modern-eq-chat-enroll-*.tmp")
 	if err != nil {
 		return fmt.Errorf("create temp enroll store: %w", err)
 	}

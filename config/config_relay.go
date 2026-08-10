@@ -5,15 +5,15 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/xackery/talkeq/relay"
-	"github.com/xackery/talkeq/sanitize"
+	"github.com/Zero-Hex/modern-eq-chat/relay"
+	"github.com/Zero-Hex/modern-eq-chat/sanitize"
 )
 
 // Relay modes.
 const (
 	// ModeStandalone is the original single-server behavior: telnet on this
 	// box, Discord from this box, no cross-server traffic. It is the default
-	// so an existing talkeq.conf keeps working untouched.
+	// so an existing modern-eq-chat.conf keeps working untouched.
 	ModeStandalone = "standalone"
 	// ModeHub runs the central router. Discord lives here.
 	ModeHub = "hub"
@@ -46,8 +46,8 @@ type Relay struct {
 // HubConfig configures the central router.
 type HubConfig struct {
 	Listen         string       `toml:"listen" desc:"Address to accept agent connections on. Default :34197"`
-	AgentsDatabase string       `toml:"agents_database" desc:"Where authorized agents and their hashed tokens are stored.\n# Managed with 'talkeq-hub agent add/list/rotate/remove' - not meant to be hand edited"`
-	EnrollDatabase string       `toml:"enroll_database" desc:"Where outstanding enrollment codes are held until they are used or expire.\n# Managed with 'talkeq-hub enroll' - not meant to be hand edited"`
+	AgentsDatabase string       `toml:"agents_database" desc:"Where authorized agents and their hashed tokens are stored.\n# Managed with 'modern-eq-chat-hub agent add/list/rotate/remove' - not meant to be hand edited"`
+	EnrollDatabase string       `toml:"enroll_database" desc:"Where outstanding enrollment codes are held until they are used or expire.\n# Managed with 'modern-eq-chat-hub enroll' - not meant to be hand edited"`
 	TLSMode        string       `toml:"tls_mode" desc:"self-signed (default, agents pin the fingerprint), letsencrypt, file, or none\n# Use none ONLY if the hub is reachable exclusively over a private network"`
 	TLSCertPath    string       `toml:"tls_cert" desc:"Certificate path when tls_mode = \"file\", or where the self-signed cert is cached"`
 	TLSKeyPath     string       `toml:"tls_key" desc:"Key path when tls_mode = \"file\", or where the self-signed key is cached"`
@@ -86,7 +86,7 @@ func (c *HubLimits) BanDurationValue() time.Duration {
 type WebConfig struct {
 	IsEnabled    bool   `toml:"enabled" desc:"Serve the management interface?"`
 	Listen       string `toml:"listen" desc:"Address to serve on. Default 127.0.0.1:34198\n# This interface can rewrite the telnet command patterns used on every connected\n# server, so it is bound to this machine only. To reach it from elsewhere, use an\n# SSH tunnel: ssh -L 34198:127.0.0.1:34198 you@hub"`
-	PasswordHash string `toml:"password_hash" desc:"argon2id hash of the admin password. Set it with 'talkeq-hub web password'\n# Never store the password itself here"`
+	PasswordHash string `toml:"password_hash" desc:"argon2id hash of the admin password. Set it with 'modern-eq-chat-hub web password'\n# Never store the password itself here"`
 }
 
 // Verify checks the web interface configuration.
@@ -98,7 +98,7 @@ func (c *WebConfig) Verify() error {
 		c.Listen = "127.0.0.1:34198"
 	}
 	if c.PasswordHash == "" {
-		return fmt.Errorf("no admin password is set; run 'talkeq-hub web password' or set enabled = false")
+		return fmt.Errorf("no admin password is set; run 'modern-eq-chat-hub web password' or set enabled = false")
 	}
 	return nil
 }
@@ -117,7 +117,7 @@ type HubChannel struct {
 type AgentConf struct {
 	ServerKey   string         `toml:"server_key" desc:"This server's routing key, e.g. server1. Lowercase, no spaces"`
 	ShortName   string         `toml:"short_name" desc:"How this server is named in relayed chat, e.g. Vanilla.\n# Produces: Soandso says from Vanilla, 'hello'"`
-	JoinCode    string         `toml:"join_code" desc:"The single blob printed by 'talkeq agent add' on the hub.\n# Setting this fills in hub_address, token and fingerprint automatically"`
+	JoinCode    string         `toml:"join_code" desc:"The single blob printed by 'modern-eq-chat agent add' on the hub.\n# Setting this fills in hub_address, token and fingerprint automatically"`
 	HubAddress  string         `toml:"hub_address" desc:"Hub host:port. Ignored when join_code is set"`
 	Token       string         `toml:"token" desc:"This agent's token. Ignored when join_code is set"`
 	Fingerprint string         `toml:"fingerprint" desc:"Hex SHA-256 of the hub's TLS certificate. Ignored when join_code is set.\n# Empty means the hub uses a publicly trusted certificate"`
@@ -163,10 +163,10 @@ func (c *HubConfig) verify() error {
 		c.Listen = ":34197"
 	}
 	if c.AgentsDatabase == "" {
-		c.AgentsDatabase = "talkeq_agents.json"
+		c.AgentsDatabase = "modern-eq-chat-agents.json"
 	}
 	if c.EnrollDatabase == "" {
-		c.EnrollDatabase = "talkeq_enroll.json"
+		c.EnrollDatabase = "modern-eq-chat-enroll.json"
 	}
 	if c.TLSMode == "" {
 		c.TLSMode = TLSSelfSigned
@@ -195,10 +195,10 @@ func (c *HubConfig) verify() error {
 	switch c.TLSMode {
 	case TLSSelfSigned:
 		if c.TLSCertPath == "" {
-			c.TLSCertPath = "talkeq_hub_cert.pem"
+			c.TLSCertPath = "modern-eq-chat-cert.pem"
 		}
 		if c.TLSKeyPath == "" {
-			c.TLSKeyPath = "talkeq_hub_key.pem"
+			c.TLSKeyPath = "modern-eq-chat-key.pem"
 		}
 	case TLSFile:
 		if c.TLSCertPath == "" || c.TLSKeyPath == "" {

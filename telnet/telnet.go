@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xackery/talkeq/characterdb"
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/request"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/characterdb"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/request"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 	"github.com/ziutek/telnet"
 )
 

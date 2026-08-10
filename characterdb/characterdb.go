@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 )
 
 var (

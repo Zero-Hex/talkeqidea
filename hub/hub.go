@@ -11,13 +11,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/guard"
+	"github.com/Zero-Hex/modern-eq-chat/relay"
+	"github.com/Zero-Hex/modern-eq-chat/request"
+	"github.com/Zero-Hex/modern-eq-chat/sanitize"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 	"github.com/gorilla/websocket"
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/guard"
-	"github.com/xackery/talkeq/relay"
-	"github.com/xackery/talkeq/request"
-	"github.com/xackery/talkeq/sanitize"
-	"github.com/xackery/talkeq/tlog"
 )
 
 // Hub is the central router every agent connects to.

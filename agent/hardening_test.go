@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xackery/talkeq/agent"
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/hub"
+	"github.com/Zero-Hex/modern-eq-chat/agent"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/hub"
 )
 
 // startHardenedHub brings up a hub with tight limits, over real sockets.

@@ -5,21 +5,21 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/xackery/talkeq/agent"
-	"github.com/xackery/talkeq/api"
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/discord"
-	"github.com/xackery/talkeq/eqlog"
-	"github.com/xackery/talkeq/guilddb"
-	"github.com/xackery/talkeq/hub"
-	"github.com/xackery/talkeq/peqeditorsql"
-	"github.com/xackery/talkeq/relay"
-	"github.com/xackery/talkeq/request"
-	"github.com/xackery/talkeq/sqlreport"
-	"github.com/xackery/talkeq/telnet"
-	"github.com/xackery/talkeq/tlog"
-	"github.com/xackery/talkeq/userdb"
-	"github.com/xackery/talkeq/webui"
+	"github.com/Zero-Hex/modern-eq-chat/agent"
+	"github.com/Zero-Hex/modern-eq-chat/api"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/discord"
+	"github.com/Zero-Hex/modern-eq-chat/eqlog"
+	"github.com/Zero-Hex/modern-eq-chat/guilddb"
+	"github.com/Zero-Hex/modern-eq-chat/hub"
+	"github.com/Zero-Hex/modern-eq-chat/peqeditorsql"
+	"github.com/Zero-Hex/modern-eq-chat/relay"
+	"github.com/Zero-Hex/modern-eq-chat/request"
+	"github.com/Zero-Hex/modern-eq-chat/sqlreport"
+	"github.com/Zero-Hex/modern-eq-chat/telnet"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/userdb"
+	"github.com/Zero-Hex/modern-eq-chat/webui"
 )
 
 // Client wraps all talking endpoints
@@ -52,13 +52,13 @@ func New(ctx context.Context) (*Client, error) {
 		ctx:    ctx,
 		cancel: cancel,
 	}
-	tlog.Debugf("[talkeq] initializing talkeq client")
+	tlog.Debugf("[main] initializing modern-eq-chat client")
 	c.config, err = config.NewConfig(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}
 
-	tlog.Debugf("[talkeq] initializing databases")
+	tlog.Debugf("[main] initializing databases")
 	err = userdb.New(c.config)
 	if err != nil {
 		return nil, fmt.Errorf("userdb.New: %w", err)
@@ -69,12 +69,12 @@ func New(ctx context.Context) (*Client, error) {
 		return nil, fmt.Errorf("guilddb.New: %w", err)
 	}
 
-	tlog.Debugf("[talkeq] initializing relay (mode: %s)", c.config.Relay.Mode)
+	tlog.Debugf("[main] initializing relay (mode: %s)", c.config.Relay.Mode)
 	if err = c.newRelay(ctx); err != nil {
 		return nil, fmt.Errorf("relay: %w", err)
 	}
 
-	tlog.Debugf("[talkeq] initializing 3rd party connections")
+	tlog.Debugf("[main] initializing 3rd party connections")
 	c.discord, err = discord.New(ctx, c.config.Discord)
 	if err != nil {
 		return nil, fmt.Errorf("discord: %w", err)
@@ -120,7 +120,7 @@ func New(ctx context.Context) (*Client, error) {
 		return nil, fmt.Errorf("peqeditorsql subscribe: %w", err)
 	}
 
-	tlog.Debugf("[talkeq] initializing API")
+	tlog.Debugf("[main] initializing API")
 	c.api, err = api.New(ctx, c.config.API, c.discord)
 	if err != nil {
 		return nil, fmt.Errorf("api subscribe: %w", err)
@@ -176,22 +176,22 @@ func (c *Client) newRelay(ctx context.Context) error {
 // nothing, and would fail outright when an agent and the hub share a box.
 func (c *Client) disableHubOnlyServices() {
 	if c.config.Discord.IsEnabled {
-		tlog.Infof("[talkeq] discord is disabled in agent mode; the hub owns the bot")
+		tlog.Infof("[main] discord is disabled in agent mode; the hub owns the bot")
 		c.config.Discord.IsEnabled = false
 	}
 	if c.config.API.IsEnabled {
-		tlog.Infof("[talkeq] api is disabled in agent mode; it runs on the hub")
+		tlog.Infof("[main] api is disabled in agent mode; it runs on the hub")
 		c.config.API.IsEnabled = false
 	}
 	if c.config.SQLReport.IsEnabled {
-		tlog.Infof("[talkeq] sql_report is disabled in agent mode; it runs on the hub")
+		tlog.Infof("[main] sql_report is disabled in agent mode; it runs on the hub")
 		c.config.SQLReport.IsEnabled = false
 	}
 }
 
 // Connect attempts to connect to all enabled endpoints
 func (c *Client) Connect(ctx context.Context) error {
-	tlog.Debugf("[talkeq] connecting")
+	tlog.Debugf("[main] connecting")
 
 	// The hub listens before anything else so agents reconnecting after a
 	// restart are not refused while Discord is still coming up.
@@ -276,7 +276,7 @@ func (c *Client) loop(ctx context.Context) {
 		for {
 			select {
 			case <-ctx.Done():
-				tlog.Debugf("[talkeq] status loop exit, context done")
+				tlog.Debugf("[main] status loop exit, context done")
 				return
 			default:
 			}
@@ -308,13 +308,13 @@ func (c *Client) loop(ctx context.Context) {
 		}
 	}()
 	if !c.config.IsKeepAliveEnabled {
-		tlog.Debugf("[talkeq] keep_alive disabled in config, exiting client loop")
+		tlog.Debugf("[main] keep_alive disabled in config, exiting client loop")
 		return
 	}
 	for {
 		select {
 		case <-ctx.Done():
-			tlog.Debugf("[talkeq] client loop exit, context done")
+			tlog.Debugf("[main] client loop exit, context done")
 			return
 		default:
 		}
@@ -381,7 +381,7 @@ func (c *Client) onRelayPublish(req request.RelayPublish) error {
 		c.agent.Publish(req.Channel, req.Name, req.Message)
 
 	default:
-		tlog.Debugf("[talkeq] relay route fired on channel %s but relay.mode is %s, ignoring", req.Channel, c.config.Relay.Mode)
+		tlog.Debugf("[main] relay route fired on channel %s but relay.mode is %s, ignoring", req.Channel, c.config.Relay.Mode)
 	}
 	return nil
 }

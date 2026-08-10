@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Zero-Hex/modern-eq-chat/relay"
 	"github.com/gorilla/websocket"
-	"github.com/xackery/talkeq/relay"
 )
 
 // EnrollResult is what an agent receives in exchange for a valid code.

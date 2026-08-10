@@ -27,7 +27,7 @@ func IsRunningAsService() bool {
 //
 // Under the SCM this also fixes the working directory. Windows starts services
 // in C:\Windows\System32 with no way to configure otherwise, so without this
-// the process would look for talkeq.conf there, fail, and write its log into a
+// the process would look for modern-eq-chat.conf there, fail, and write its log into a
 // system directory.
 func Run(name string, serve func(stop <-chan struct{}) error) error {
 	if !IsRunningAsService() {

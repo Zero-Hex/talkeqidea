@@ -9,12 +9,12 @@ import (
 )
 
 func TestPrepareFillsInDefaults(t *testing.T) {
-	def, err := Prepare(Definition{Name: "talkeq-hub"})
+	def, err := Prepare(Definition{Name: "modern-eq-chat-hub"})
 	if err != nil {
 		t.Fatalf("prepare: %s", err)
 	}
 
-	if def.DisplayName != "talkeq-hub" {
+	if def.DisplayName != "modern-eq-chat-hub" {
 		t.Errorf("display name = %q, want the service name", def.DisplayName)
 	}
 	if !filepath.IsAbs(def.ExecutablePath) {
@@ -41,7 +41,7 @@ func TestPrepareRequiresName(t *testing.T) {
 
 func TestPrepareRejectsMissingWorkingDirectory(t *testing.T) {
 	_, err := Prepare(Definition{
-		Name:             "talkeq-hub",
+		Name:             "modern-eq-chat-hub",
 		WorkingDirectory: filepath.Join(t.TempDir(), "does-not-exist"),
 	})
 	if err == nil {
@@ -62,7 +62,7 @@ func TestPrepareMakesPathsAbsolute(t *testing.T) {
 	defer os.Chdir(previous)
 
 	def, err := Prepare(Definition{
-		Name:             "talkeq-hub",
+		Name:             "modern-eq-chat-hub",
 		WorkingDirectory: ".",
 	})
 	if err != nil {
@@ -74,7 +74,7 @@ func TestPrepareMakesPathsAbsolute(t *testing.T) {
 }
 
 func TestPlanFirewallMatchesPlatform(t *testing.T) {
-	plan := PlanFirewall(34197, "talkeq-hub")
+	plan := PlanFirewall(34197, "modern-eq-chat-hub")
 
 	switch runtime.GOOS {
 	case "windows":
@@ -112,7 +112,7 @@ func TestApplyEmptyPlanFails(t *testing.T) {
 }
 
 func TestElevationHintMentionsThePlatformMechanism(t *testing.T) {
-	hint := ElevationHint("talkeq-hub", "service", "install")
+	hint := ElevationHint("modern-eq-chat-hub", "service", "install")
 
 	if runtime.GOOS == "windows" {
 		if !strings.Contains(hint, "administrator") {

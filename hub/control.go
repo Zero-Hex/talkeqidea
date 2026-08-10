@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/relay"
-	"github.com/xackery/talkeq/sanitize"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/relay"
+	"github.com/Zero-Hex/modern-eq-chat/sanitize"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 )
 
 // Control operations used by the web interface: probing agents, renaming them,
@@ -97,7 +97,7 @@ func (h *Hub) TestAgent(serverKey string, withEcho bool, timeout time.Duration) 
 	frame, err := relay.NewFrame(relay.FrameTest, &relay.Test{
 		ID:      id,
 		IsEcho:  withEcho,
-		Message: "TalkEQ connection test from the hub",
+		Message: "Modern EQ Chat connection test from the hub",
 	})
 	if err != nil {
 		result.Detail = "could not build the probe: " + err.Error()

@@ -10,10 +10,10 @@ import (
 	"database/sql"
 
 	//used for database connection
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/discord"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/discord"
-	"github.com/xackery/talkeq/tlog"
 )
 
 // SQLReport represents a sqlreport connection

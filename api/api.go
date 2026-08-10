@@ -11,12 +11,12 @@ import (
 
 	"sync"
 
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/discord"
+	"github.com/Zero-Hex/modern-eq-chat/registerdb"
+	"github.com/Zero-Hex/modern-eq-chat/request"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 	"github.com/gorilla/mux"
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/discord"
-	"github.com/xackery/talkeq/registerdb"
-	"github.com/xackery/talkeq/request"
-	"github.com/xackery/talkeq/tlog"
 )
 
 // API represents the api service

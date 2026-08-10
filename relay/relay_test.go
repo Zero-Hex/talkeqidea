@@ -73,7 +73,7 @@ func TestJoinCodeRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("encode: %s", err)
 	}
-	if !strings.HasPrefix(encoded, "talkeq1_") {
+	if !strings.HasPrefix(encoded, "meqc1_") {
 		t.Errorf("join code %q lacks the version prefix", encoded)
 	}
 	if strings.ContainsAny(encoded, " \t\n\"") {
@@ -93,10 +93,10 @@ func TestParseJoinCodeRejectsBadInput(t *testing.T) {
 	tests := []string{
 		"",
 		"hello",
-		"talkeq1_not-base64!!",
-		"talkeq1_" + encodeForTest(t, &JoinCode{ServerKey: "s", Token: "t"}), // no address
-		"talkeq1_" + encodeForTest(t, &JoinCode{Address: "a:1", Token: "t"}), // no server key
-		"talkeq1_" + encodeForTest(t, &JoinCode{Address: "a:1", ServerKey: "s"}),
+		"meqc1_not-base64!!",
+		"meqc1_" + encodeForTest(t, &JoinCode{ServerKey: "s", Token: "t"}), // no address
+		"meqc1_" + encodeForTest(t, &JoinCode{Address: "a:1", Token: "t"}), // no server key
+		"meqc1_" + encodeForTest(t, &JoinCode{Address: "a:1", ServerKey: "s"}),
 	}
 	for _, in := range tests {
 		if _, err := ParseJoinCode(in); err == nil {
@@ -113,7 +113,7 @@ func encodeForTest(t *testing.T, j *JoinCode) string {
 	if err != nil {
 		t.Fatalf("encode: %s", err)
 	}
-	return strings.TrimPrefix(encoded, "talkeq1_")
+	return strings.TrimPrefix(encoded, "meqc1_")
 }
 
 func TestEventValidate(t *testing.T) {

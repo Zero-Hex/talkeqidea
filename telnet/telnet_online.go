@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xackery/talkeq/characterdb"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/characterdb"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 )
 
 var (

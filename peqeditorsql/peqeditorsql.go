@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xackery/talkeq/request"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/request"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 
+	"github.com/Zero-Hex/modern-eq-chat/config"
 	"github.com/nxadm/tail"
-	"github.com/xackery/talkeq/config"
 )
 
 const (

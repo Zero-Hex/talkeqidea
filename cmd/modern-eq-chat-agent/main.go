@@ -1,4 +1,4 @@
-// Command talkeq-agent connects one EQEMU server to a TalkEQ hub.
+// Command modern-eq-chat-agent connects one EQEMU server to a Modern EQ Chat hub.
 //
 // The agent reports local chat upward and injects what the hub sends back. It
 // holds no Discord credentials and no other server's token, and it dials out,
@@ -11,11 +11,11 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/xackery/talkeq/client"
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/service"
-	"github.com/xackery/talkeq/setup"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/client"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/service"
+	"github.com/Zero-Hex/modern-eq-chat/setup"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 )
 
 // Version is set at build time.
@@ -36,6 +36,8 @@ func main() {
 func run() error {
 	args := os.Args[1:]
 
+	migrateLegacyFiles()
+
 	if len(args) > 0 {
 		tlog.Init(nil, os.Stdout)
 
@@ -49,7 +51,7 @@ func run() error {
 		case "service":
 			return runServiceCommand(args[1:])
 		case "version", "--version", "-v":
-			fmt.Printf("talkeq-agent %s\n", Version)
+			fmt.Printf("modern-eq-chat-agent %s\n", Version)
 			return nil
 		case "help", "--help", "-h":
 			usage()
@@ -78,21 +80,21 @@ func run() error {
 // Manager, so a console run and a service run share one code path.
 func serve() error {
 	return service.Run(serviceName, func(stop <-chan struct{}) error {
-		w, err := os.Create("talkeq.log")
+		w, err := os.Create("modern-eq-chat.log")
 		if err != nil {
 			return fmt.Errorf("create log: %w", err)
 		}
 		defer w.Close()
 		tlog.Init(w, os.Stdout)
 
-		tlog.Infof("starting talkeq-agent %s", Version)
+		tlog.Infof("starting modern-eq-chat-agent %s", Version)
 
 		cfg, err := config.Load(config.DefaultPath)
 		if err != nil {
 			return fmt.Errorf("config: %w", err)
 		}
 		if cfg.Relay.Mode != config.ModeAgent {
-			return fmt.Errorf("talkeq.conf has relay.mode = %q; run 'talkeq-agent setup' to configure this box as an agent", cfg.Relay.Mode)
+			return fmt.Errorf("modern-eq-chat.conf has relay.mode = %q; run 'modern-eq-chat-agent setup' to configure this box as an agent", cfg.Relay.Mode)
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -120,8 +122,25 @@ func serve() error {
 	})
 }
 
+// migrateLegacyFiles moves a pre-rename installation onto the current
+// filenames, reporting anything it changed.
+//
+// This runs before any command, including setup: an operator upgrading from
+// TalkEQ should find their existing configuration picked up, not be dropped
+// into a fresh setup wizard because the file is named differently now.
+func migrateLegacyFiles() {
+	actions, err := config.Migrate(config.DefaultPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not migrate files from the previous name: %s\n", err)
+		return
+	}
+	for _, action := range actions {
+		fmt.Printf("migrated: %s\n", action)
+	}
+}
+
 func usage() {
-	fmt.Println("usage: talkeq-agent [command]")
+	fmt.Println("usage: modern-eq-chat-agent [command]")
 	fmt.Println()
 	fmt.Println("With no command, connects to the hub and relays chat.")
 	fmt.Println()

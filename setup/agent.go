@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/xackery/talkeq/agent"
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/relay"
+	"github.com/Zero-Hex/modern-eq-chat/agent"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/relay"
 )
 
 // RunAgent walks an operator through connecting this game server to a hub.
@@ -22,9 +22,9 @@ func RunAgent(ctx context.Context, p *Prompter, path string) error {
 		path = config.DefaultPath
 	}
 
-	p.Printf("\nTalkEQ agent setup\n")
+	p.Printf("\nModern EQ Chat agent setup\n")
 	p.Printf("==================\n\n")
-	p.Note("This connects your EQEMU server to a TalkEQ hub.")
+	p.Note("This connects your EQEMU server to a Modern EQ Chat hub.")
 	p.Note("The connection is outbound, so you do not need to open any ports")
 	p.Note("or have a fixed IP address.")
 	p.Printf("\n")
@@ -86,13 +86,13 @@ func RunAgent(ctx context.Context, p *Prompter, path string) error {
 	p.Note("Enrolled as %s (%s).", result.ServerKey, result.ShortName)
 	p.Note("Wrote %s", path)
 	p.Printf("\n")
-	p.Note("Start the agent with: talkeq-agent")
+	p.Note("Start the agent with: modern-eq-chat-agent")
 	return nil
 }
 
 func agentEnrollStep(ctx context.Context, p *Prompter, cfg *config.Config) (*agent.EnrollResult, error) {
 	p.Section("Connect to the hub")
-	p.Note("Your hub operator runs 'talkeq-hub enroll' and gives you two things.")
+	p.Note("Your hub operator runs 'modern-eq-chat-hub enroll' and gives you two things.")
 	p.Printf("\n")
 
 	for {

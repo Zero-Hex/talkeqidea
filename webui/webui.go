@@ -18,10 +18,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/guard"
-	"github.com/xackery/talkeq/hub"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/guard"
+	"github.com/Zero-Hex/modern-eq-chat/hub"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 )
 
 //go:embed assets
@@ -51,7 +51,7 @@ func New(cfg config.WebConfig, h *hub.Hub, configPath string) (*Server, error) {
 		return nil, fmt.Errorf("the web interface needs a hub")
 	}
 	if cfg.PasswordHash == "" {
-		return nil, fmt.Errorf("no admin password is set; run 'talkeq-hub web password' to set one")
+		return nil, fmt.Errorf("no admin password is set; run 'modern-eq-chat-hub web password' to set one")
 	}
 
 	loginGuard, err := newLoginGuard()

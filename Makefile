@@ -1,5 +1,5 @@
 VERSION ?= v1.3.14
-NAME := talkeq
+NAME := modern-eq-chat
 
 # Every target here is a command, not a file. Without this, a target sharing a
 # name with a directory in the repo is silently treated as already built - which
@@ -9,7 +9,7 @@ NAME := talkeq
 	build-linux build-darwin build-windows build-linux-arm analyze coverage \
 	profile-heap profile-trace
 
-# run a copy of talkeq
+# run a copy of modern-eq-chat
 run:
 	@echo "run: building"
 	@mkdir -p bin
@@ -18,12 +18,12 @@ run:
 # run the relay hub
 run-hub:
 	@mkdir -p bin
-	cd bin && go run ../cmd/talkeq-hub
+	cd bin && go run ../cmd/modern-eq-chat-hub
 
 # run a relay agent
 run-agent:
 	@mkdir -p bin
-	cd bin && go run ../cmd/talkeq-agent
+	cd bin && go run ../cmd/modern-eq-chat-agent
 
 # vet and test, the checks that need no extra tooling
 sanitize: lint test-race
@@ -59,23 +59,23 @@ coverage:
 	@go test -covermode=atomic -coverprofile=coverage.out ./...
 	@go tool cover -func coverage.out | grep total
 
-# talkeq is the original single-server binary. talkeq-hub and talkeq-agent are
+# modern-eq-chat is the original single-server binary. modern-eq-chat-hub and modern-eq-chat-agent are
 # the two halves of the cross-server relay.
-BINARIES := talkeq talkeq-hub talkeq-agent
+BINARIES := modern-eq-chat modern-eq-chat-hub modern-eq-chat-agent
 
 # build all supported versions
 build-all: build-prepare build-linux build-darwin build-windows
 
 # prep for building
 build-prepare:
-	@echo "Preparing talkeq ${VERSION}"
+	@echo "Preparing modern-eq-chat ${VERSION}"
 	@rm -rf bin/*
 	@-mkdir -p bin/
 
 
 # pkg-for resolves a binary name to the package that builds it. The original
-# talkeq lives at the module root; the relay binaries live under cmd/.
-pkg-for = $(if $(filter talkeq,$(1)),.,./cmd/$(1))
+# modern-eq-chat lives at the module root; the relay binaries live under cmd/.
+pkg-for = $(if $(filter modern-eq-chat,$(1)),.,./cmd/$(1))
 
 # make darwin binaries
 build-darwin:

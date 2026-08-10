@@ -8,15 +8,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/hub"
-	"github.com/xackery/talkeq/sanitize"
-	"github.com/xackery/talkeq/service"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/hub"
+	"github.com/Zero-Hex/modern-eq-chat/sanitize"
+	"github.com/Zero-Hex/modern-eq-chat/service"
 )
 
 // RunHub walks an operator through configuring the hub.
 //
-// It rewrites talkeq.conf in place, keeping any settings it does not ask
+// It rewrites modern-eq-chat.conf in place, keeping any settings it does not ask
 // about, so re-running it to change one answer does not discard the rest of an
 // operator's tuning.
 func RunHub(ctx context.Context, p *Prompter, path string) error {
@@ -24,7 +24,7 @@ func RunHub(ctx context.Context, p *Prompter, path string) error {
 		path = config.DefaultPath
 	}
 
-	p.Printf("\nTalkEQ hub setup\n")
+	p.Printf("\nModern EQ Chat hub setup\n")
 	p.Printf("================\n\n")
 	p.Note("This box will run the Discord bot and route chat between servers.")
 	p.Note("Game servers connect to it; you do not need to open any ports on them.")
@@ -291,8 +291,8 @@ func hubFinishStep(ctx context.Context, p *Prompter, cfg *config.Config) error {
 	}
 	if !addAgent {
 		p.Printf("\n")
-		p.Note("Start the hub with: talkeq-hub")
-		p.Note("Add servers later with: talkeq-hub enroll <server-key> [display name]")
+		p.Note("Start the hub with: modern-eq-chat-hub")
+		p.Note("Add servers later with: modern-eq-chat-hub enroll <server-key> [display name]")
 		return nil
 	}
 
@@ -310,7 +310,7 @@ func hubFinishStep(ctx context.Context, p *Prompter, cfg *config.Config) error {
 	}
 
 	p.Printf("\n")
-	p.Note("Start the hub with: talkeq-hub")
+	p.Note("Start the hub with: modern-eq-chat-hub")
 	return nil
 }
 
@@ -327,7 +327,7 @@ func hubFirewallStep(p *Prompter, cfg *config.Config) {
 		}
 	}
 
-	plan := service.PlanFirewall(port, "talkeq-hub")
+	plan := service.PlanFirewall(port, "modern-eq-chat-hub")
 
 	p.Note("Agents need to reach inbound TCP %d on this box.", port)
 	if plan.Manual != "" {
@@ -336,7 +336,7 @@ func hubFirewallStep(p *Prompter, cfg *config.Config) {
 		p.Printf("\n")
 		p.Note("To open it with %s:", plan.Tool)
 		p.Printf("\n    %s\n\n", plan.String())
-		p.Note("Or run: talkeq-hub firewall --apply")
+		p.Note("Or run: modern-eq-chat-hub firewall --apply")
 	}
 	p.Note("If this box is behind a router or a cloud security group, the rule")
 	p.Note("there matters too.")
@@ -361,7 +361,7 @@ func hubEnrollOne(p *Prompter, h *hub.Hub) error {
 	}
 
 	p.Printf("\n")
-	p.Note("Run 'talkeq-agent' on %s and give it:", display)
+	p.Note("Run 'modern-eq-chat-agent' on %s and give it:", display)
 	p.Printf("\n")
 	p.Printf("    Hub address:      %s\n", h.AdvertiseAddress())
 	p.Printf("    Enrollment code:  %s\n", code)
@@ -374,7 +374,7 @@ func hubEnrollOne(p *Prompter, h *hub.Hub) error {
 // telnetStep collects local EQEMU telnet settings, shared by both wizards.
 func telnetStep(p *Prompter, cfg *config.Config) error {
 	p.Section("Local EQEMU server")
-	p.Note("TalkEQ reads chat from your server's telnet console.")
+	p.Note("Modern EQ Chat reads chat from your server's telnet console.")
 	p.Printf("\n")
 
 	cfg.Telnet.IsEnabled = true

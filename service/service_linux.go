@@ -55,7 +55,7 @@ const unitDir = "/etc/systemd/system"
 // the config, roster and log.
 var unitTemplate = template.Must(template.New("unit").Parse(`[Unit]
 Description={{.Description}}
-Documentation=https://github.com/xackery/talkeq
+Documentation=https://github.com/Zero-Hex/modern-eq-chat
 After=network-online.target
 Wants=network-online.target
 
@@ -130,7 +130,7 @@ func (m *systemdManager) Install(def Definition) error {
 
 func (m *systemdManager) Uninstall(name string) error {
 	if !IsElevated() {
-		return fmt.Errorf("removing a systemd unit needs root. %s", ElevationHint("talkeq", "service", "uninstall"))
+		return fmt.Errorf("removing a systemd unit needs root. %s", ElevationHint("modern-eq-chat", "service", "uninstall"))
 	}
 
 	// Ignore failures here: the service may already be stopped or disabled,
@@ -147,14 +147,14 @@ func (m *systemdManager) Uninstall(name string) error {
 
 func (m *systemdManager) Start(name string) error {
 	if !IsElevated() {
-		return fmt.Errorf("starting a service needs root. %s", ElevationHint("talkeq", "service", "start"))
+		return fmt.Errorf("starting a service needs root. %s", ElevationHint("modern-eq-chat", "service", "start"))
 	}
 	return run("systemctl", "start", name)
 }
 
 func (m *systemdManager) Stop(name string) error {
 	if !IsElevated() {
-		return fmt.Errorf("stopping a service needs root. %s", ElevationHint("talkeq", "service", "stop"))
+		return fmt.Errorf("stopping a service needs root. %s", ElevationHint("modern-eq-chat", "service", "stop"))
 	}
 	return run("systemctl", "stop", name)
 }

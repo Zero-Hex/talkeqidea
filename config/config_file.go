@@ -8,8 +8,8 @@ import (
 	"github.com/jbsmith7741/toml"
 )
 
-// DefaultPath is where talkeq looks for its configuration.
-const DefaultPath = "talkeq.conf"
+// DefaultPath is where modern-eq-chat looks for its configuration.
+const DefaultPath = "modern-eq-chat.conf"
 
 // Default returns the built-in configuration, the same one written on first
 // run. Exported so the setup wizards can start from it rather than from a
@@ -66,7 +66,7 @@ func LoadOrDefault(path string) (*Config, error) {
 }
 
 // Save writes the configuration, preserving the descriptive comments that make
-// talkeq.conf self-documenting.
+// modern-eq-chat.conf self-documenting.
 //
 // The write goes to a temporary file and is renamed into place, so an
 // interrupted save cannot leave an operator with a truncated config and a hub
@@ -77,7 +77,7 @@ func Save(cfg *Config, path string) error {
 	}
 
 	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, ".talkeq-conf-*.tmp")
+	tmp, err := os.CreateTemp(dir, ".modern-eq-chat-conf-*.tmp")
 	if err != nil {
 		return fmt.Errorf("create temp config: %w", err)
 	}

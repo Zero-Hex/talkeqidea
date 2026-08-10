@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TalkEQ Hub</title>
+<title>Modern EQEMU to Discord Chat</title>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
 <div id="login" class="login">
   <form id="login-form" class="card">
-    <h1>TalkEQ Hub</h1>
+    <h1>Modern EQ Chat Hub</h1>
     <p class="muted">Local management interface</p>
     <label for="password">Admin password</label>
     <input type="password" id="password" autocomplete="current-password" autofocus>
@@ -21,7 +21,7 @@
 
 <div id="app" hidden>
   <header>
-    <h1>TalkEQ Hub</h1>
+    <h1>Modern EQ Chat Hub</h1>
     <div class="header-actions">
       <button id="refresh" class="secondary">Refresh</button>
       <button id="logout" class="secondary">Sign out</button>
@@ -58,7 +58,7 @@
     </div>
     <p class="muted">
       Changes apply to the running hub immediately and are written to
-      talkeq.conf. Patterns accept
+      modern-eq-chat.conf. Patterns accept
       <code>{{.Name}}</code>, <code>{{.Message}}</code>,
       <code>{{.OriginName}}</code>, <code>{{.Origin}}</code> and
       <code>{{.Channel}}</code>.

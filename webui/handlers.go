@@ -6,10 +6,10 @@ import (
 	"sort"
 	"time"
 
-	"github.com/xackery/talkeq/config"
-	"github.com/xackery/talkeq/hub"
-	"github.com/xackery/talkeq/sanitize"
-	"github.com/xackery/talkeq/tlog"
+	"github.com/Zero-Hex/modern-eq-chat/config"
+	"github.com/Zero-Hex/modern-eq-chat/hub"
+	"github.com/Zero-Hex/modern-eq-chat/sanitize"
+	"github.com/Zero-Hex/modern-eq-chat/tlog"
 )
 
 // agentView is one server as the UI sees it, merging the roster's persistent
@@ -170,7 +170,7 @@ func (s *Server) handleRotate(w http.ResponseWriter, r *http.Request) {
 		"code":        code,
 		"hub_address": s.hub.AdvertiseAddress(),
 		"fingerprint": s.hub.Fingerprint(),
-		"note":        "Run 'talkeq-agent setup' on that server with this code. Its old token keeps working until it re-enrolls.",
+		"note":        "Run 'modern-eq-chat-agent setup' on that server with this code. Its old token keeps working until it re-enrolls.",
 	})
 }
 
@@ -327,7 +327,7 @@ func (s *Server) handleChannels(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// persistChannels writes the new channel list into talkeq.conf.
+// persistChannels writes the new channel list into modern-eq-chat.conf.
 //
 // The file is re-read rather than held in memory, so an operator who edited it
 // by hand since startup does not silently lose those edits.
